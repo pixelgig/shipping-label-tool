@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A4 Shipping Label Customizer & Sizer</title>
+  <title>A4 Shipping Label Customizer - NIVIDHI</title>
+  <link rel="icon" type="image/png" href="nividhi-favicon.png">
   <!-- Mozilla PDF.js Engine -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <style>
@@ -11,19 +12,32 @@
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #0f172a;
-      --accent: #1e293b;
+      --accent: #0f3728; /* Signature Emerald */
       --border: #cbd5e1;
       --primary: #0284c7;
       --dropzone-bg: #f1f5f9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-    .container { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 390px 1fr; gap: 24px; }
+    .container { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 380px 1fr; gap: 24px; }
     .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 22px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-    h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+    h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
     label { display: block; font-size: 0.85rem; font-weight: 600; margin-top: 14px; margin-bottom: 4px; color: #475569; }
     input, select, textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; }
     input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); }
+
+    .brand-banner-preview {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 6px;
+    }
+    .brand-banner-preview img { height: 32px; width: auto; object-fit: contain; }
+    .store-badge { font-size: 0.8rem; font-weight: 600; color: #0f3728; display: flex; align-items: center; gap: 5px; }
 
     .dropzone {
       margin-top: 6px;
@@ -36,7 +50,7 @@
     }
     .dropzone .badge {
       display: inline-block;
-      background: #0284c7;
+      background: var(--accent);
       color: #fff;
       font-size: 0.72rem;
       font-weight: 700;
@@ -77,16 +91,19 @@
 
 <div class="container">
   <div class="card sidebar">
-    <h1>A4 Label Customizer</h1>
+    <h1>
+      <img src="nividhi-favicon.png" alt="NV" style="height:26px; width:26px; border-radius:50%;" onerror="this.style.display='none'">
+      NIVIDHI Label Studio
+    </h1>
 
     <label>1. Standard Paper Size</label>
-    <input type="text" value="A4 Sheet (210 x 297 mm)" readonly style="background:#f1f5f9; color:#475569; font-weight:600;">
+    <input type="text" value="A4 Sheet (210 × 297 mm)" readonly style="background:#f1f5f9; color:#475569; font-weight:600;">
 
     <label>2. Packaging Poly Bag Size</label>
     <select id="bagSizeSelect">
-      <option value="4">Small Polybag (6x8 or 7x10 inch) - 4-Slot Grid (A6 Sizing)</option>
-      <option value="2">Medium Polybag (9x12 or 10x14 inch) - 2-Slot Grid (A5 Sizing)</option>
-      <option value="1">Large Polybag (12x16 inch) - 1-Slot Full Page (A4 Sizing)</option>
+      <option value="4">Small Polybag (6×8" or 7×10") → 4-Slot Grid (A6 Sizing)</option>
+      <option value="2">Medium Polybag (9×12" or 10×14") → 2-Slot Grid (A5 Sizing)</option>
+      <option value="1">Large Polybag (12×16") → 1-Slot Full Page (A4 Sizing)</option>
     </select>
 
     <label>3. How Many Labels to Print on this Sheet?</label>
@@ -98,7 +115,15 @@
       <option value="auto">Auto (Match uploaded files / pages)</option>
     </select>
 
-    <label>4. Upload Courier Shipping Label(s)</label>
+    <label>4. Active Branding Header</label>
+    <div class="brand-banner-preview">
+      <img id="activeLogoImg" src="nividhi-logo-transparrent.png" alt="NIVIDHI Logo" onerror="this.src='nividhi-logo-white.png'">
+      <div class="store-badge">
+        🛍️ nividhi.in
+      </div>
+    </div>
+
+    <label>5. Upload Courier Shipping Label(s)</label>
     <div class="dropzone" id="labelDropZone">
       <span class="badge">Preferred: PDF</span>
       <p><strong>Click to browse</strong> or drag & drop files here</p>
@@ -107,17 +132,10 @@
     <input type="file" id="labelFileInput" accept=".pdf,application/pdf,image/*" multiple style="display:none;">
     <div class="file-status" id="fileStatusText">No label uploaded yet</div>
 
-    <label>5. Brand Logo (Optional)</label>
-    <input type="file" id="logoFileInput" accept="image/*">
-
-    <label>6. Brand / Storefront Details</label>
-    <input type="text" id="brandName" placeholder="Brand Name (e.g., NIVIDHI)">
-    <input type="text" id="websiteUrl" placeholder="Website URL (e.g., nividhi.netlify.app)" style="margin-top:6px;">
-
-    <label>7. Custom Bottom Message</label>
+    <label>6. Custom Bottom Message</label>
     <textarea id="thankYouMsg" rows="2">Thank you for supporting our small business!</textarea>
 
-    <label>8. Disclaimer Note</label>
+    <label>7. Mandatory Disclaimer Note</label>
     <textarea id="disclaimerMsg" rows="2">Please record a 360 degree unboxing video without cuts for damage/missing claims.</textarea>
 
     <button class="btn" id="renderBtn">Refresh A4 Layout</button>
@@ -134,9 +152,8 @@
 </div>
 
 <script>
-  // Configure PDF.js worker using an inline blob URL to prevent CORS worker errors
   if (window.pdfjsLib) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+    pdfjsLib.GlobalWorkerOptions.workerSrc = false;
   }
 
   const A4_WIDTH = 2480;
@@ -147,7 +164,16 @@
   canvas.width = A4_WIDTH;
   canvas.height = A4_HEIGHT;
 
-  let cachedLogo = null;
+  const STORE_URL = "nividhi.in";
+
+  let cachedLogo = new Image();
+  cachedLogo.src = "nividhi-logo-transparrent.png";
+  cachedLogo.onload = () => renderSheet();
+  cachedLogo.onerror = () => {
+    cachedLogo.src = "nividhi-logo-white.png";
+    cachedLogo.onload = () => renderSheet();
+  };
+
   let loadedLabelImages = [];
 
   const dropZone = document.getElementById("labelDropZone");
@@ -172,27 +198,7 @@
   });
 
   window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("brandName").value = localStorage.getItem("nividhi_brand") || "NIVIDHI";
-    document.getElementById("websiteUrl").value = localStorage.getItem("nividhi_url") || "nividhi.netlify.app";
-    renderBlankA4();
-  });
-
-  ["brandName", "websiteUrl"].forEach(id => {
-    document.getElementById(id).addEventListener("input", (e) => {
-      localStorage.setItem("nividhi_" + (id === "brandName" ? "brand" : "url"), e.target.value);
-    });
-  });
-
-  document.getElementById("logoFileInput").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => { cachedLogo = img; renderSheet(); };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
+    renderSheet();
   });
 
   async function handleFiles(files) {
@@ -231,7 +237,12 @@
       throw new Error("PDF renderer is not loaded. Please check your internet connection.");
     }
     const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const loadingTask = pdfjsLib.getDocument({
+      data: buffer,
+      useWorkerFetch: false,
+      isEvalSupported: false
+    });
+    const pdf = await loadingTask.promise;
     const images = [];
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -257,25 +268,11 @@
   bagSizeSelect.addEventListener("change", renderSheet);
   printCountSelect.addEventListener("change", renderSheet);
 
-  function renderBlankA4() {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(60, 60, A4_WIDTH - 120, A4_HEIGHT - 120);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "46px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Upload PDF shipping label(s) to preview A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
-  }
-
   function renderSheet() {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
 
     const gridType = parseInt(bagSizeSelect.value);
-    const brand = document.getElementById("brandName").value || "NIVIDHI";
-    const url = document.getElementById("websiteUrl").value || "";
     const thankYou = document.getElementById("thankYouMsg").value;
     const disclaimer = document.getElementById("disclaimerMsg").value;
 
@@ -310,12 +307,12 @@
       cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT }];
     }
 
-    // Only render up to targetCount; empty slots remain pure white to save ink
+    // Only render selected count; other slots remain pure white to save ink
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (i < targetCount) {
         const labelImg = loadedLabelImages[i] || loadedLabelImages[0] || null;
-        drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer);
+        drawBrandedLabelCell(cell, labelImg, thankYou, disclaimer);
       }
     }
   }
@@ -332,35 +329,84 @@
     ctx.restore();
   }
 
-  function drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer) {
+  // Draw clean vector shopping bag icon
+  function drawShoppingBagIcon(x, y, size) {
+    ctx.save();
+    ctx.strokeStyle = "#0f3728";
+    ctx.fillStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+
+    // Bag body
+    const bodyW = size;
+    const bodyH = size * 0.85;
+    const bodyY = y + size * 0.25;
+    ctx.beginPath();
+    ctx.roundRect(x, bodyY, bodyW, bodyH, [4]);
+    ctx.stroke();
+
+    // Bag handle
+    const handleW = size * 0.45;
+    const handleH = size * 0.35;
+    const handleX = x + (bodyW - handleW) / 2;
+    ctx.beginPath();
+    ctx.arc(handleX + handleW / 2, bodyY, handleW / 2, Math.PI, 0, false);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBrandedLabelCell(cell, labelImg, thankYou, disclaimer) {
     const pad = 50;
     const cx = cell.x + pad;
     const cy = cell.y + pad;
     const cw = cell.w - (pad * 2);
     const ch = cell.h - (pad * 2);
 
-    const headerHeight = Math.floor(ch * 0.12);
-    const footerHeight = Math.floor(ch * 0.16);
+    const headerHeight = Math.floor(ch * 0.13);
+    const footerHeight = Math.floor(ch * 0.13);
     const bodyHeight = ch - headerHeight - footerHeight;
 
+    // Header
     ctx.save();
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 44px Georgia, serif";
-    ctx.textAlign = "left";
-    let textX = cx;
-
-    if (cachedLogo) {
-      const logoSize = headerHeight - 10;
-      ctx.drawImage(cachedLogo, cx, cy, logoSize, logoSize);
-      textX += logoSize + 20;
+    // 1. Left/Center: ONLY the official NIVIDHI Logo Banner
+    if (cachedLogo && cachedLogo.complete && cachedLogo.naturalWidth > 0) {
+      const logoAspect = cachedLogo.naturalWidth / cachedLogo.naturalHeight;
+      const targetH = headerHeight - 14;
+      const targetW = Math.min(cw * 0.62, targetH * logoAspect);
+      ctx.drawImage(cachedLogo, cx, cy + 6, targetW, targetH);
+    } else {
+      ctx.fillStyle = "#0f3728";
+      ctx.font = "bold 44px Georgia, serif";
+      ctx.textAlign = "left";
+      ctx.fillText("NIVIDHI", cx, cy + 46);
     }
 
-    ctx.fillText(brand, textX, cy + 48);
-    ctx.font = "26px sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.fillText(url, textX, cy + 86);
+    // 2. Right Corner: Shopping Bag Icon + nividhi.in
+    const iconSize = 28;
+    const textY = cy + headerHeight / 2 + 8;
+    ctx.font = "600 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    const textWidth = ctx.measureText(STORE_URL).width;
+
+    const totalBadgeWidth = iconSize + 10 + textWidth;
+    const badgeStartX = cx + cw - totalBadgeWidth;
+
+    drawShoppingBagIcon(badgeStartX, textY - 24, iconSize);
+
+    ctx.fillStyle = "#0f3728";
+    ctx.textAlign = "left";
+    ctx.fillText(STORE_URL, badgeStartX + iconSize + 10, textY);
     ctx.restore();
 
+    // Divider below header
+    ctx.save();
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + headerHeight);
+    ctx.lineTo(cx + cw, cy + headerHeight);
+    ctx.stroke();
+    ctx.restore();
+
+    // Courier Shipping Label
     if (labelImg) {
       const scale = Math.min(cw / labelImg.width, bodyHeight / labelImg.height);
       const lw = labelImg.width * scale;
@@ -368,8 +414,20 @@
       const lx = cx + (cw - lw) / 2;
       const ly = cy + headerHeight + (bodyHeight - lh) / 2;
       ctx.drawImage(labelImg, lx, ly, lw, lh);
+    } else {
+      ctx.save();
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      ctx.strokeRect(cx, cy + headerHeight, cw, bodyHeight);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("[Courier Shipping Label Preview]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
+      ctx.restore();
     }
 
+    // Footer: Notice & Thank You Note
     const fy = cy + headerHeight + bodyHeight + 10;
     ctx.save();
     ctx.strokeStyle = "#e2e8f0";
@@ -382,11 +440,11 @@
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 24px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(thankYou, cx, fy + 40);
+    ctx.fillText(thankYou, cx, fy + 38);
 
     ctx.fillStyle = "#dc2626";
     ctx.font = "italic 20px sans-serif";
-    ctx.fillText("Notice: " + disclaimer, cx, fy + 76);
+    ctx.fillText("Notice: " + disclaimer, cx, fy + 72);
     ctx.restore();
   }
 </script>
