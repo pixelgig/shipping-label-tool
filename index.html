@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>A4 Shipping Label Customizer & Sizer</title>
+  <!-- Mozilla PDF.js Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <style>
     :root {
       --bg: #f8fafc;
@@ -51,6 +53,7 @@
       font-size: 0.82rem;
       color: #0369a1;
       font-weight: 600;
+      word-break: break-all;
     }
 
     .btn { display: block; width: 100%; background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 16px; text-align: center; }
@@ -99,7 +102,7 @@
     <div class="dropzone" id="labelDropZone">
       <span class="badge">Preferred: PDF</span>
       <p><strong>Click to browse</strong> or drag & drop files here</p>
-      <span>Upload 1 to 4 PDF or Image labels</span>
+      <span>Primary: PDF (single/multi-page) | Also accepts: PNG, JPG</span>
     </div>
     <input type="file" id="labelFileInput" accept=".pdf,application/pdf,image/*" multiple style="display:none;">
     <div class="file-status" id="fileStatusText">No label uploaded yet</div>
@@ -131,6 +134,11 @@
 </div>
 
 <script>
+  // Configure PDF.js worker using an inline blob URL to prevent CORS worker errors
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+  }
+
   const A4_WIDTH = 2480;
   const A4_HEIGHT = 3508;
   const canvas = document.getElementById("a4Canvas");
@@ -149,11 +157,7 @@
   const bagSizeSelect = document.getElementById("bagSizeSelect");
 
   dropZone.addEventListener("click", () => fileInput.click());
-
-  dropZone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-  });
-
+  dropZone.addEventListener("dragover", (e) => e.preventDefault());
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -199,10 +203,11 @@
       const isPdf = file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
       if (isPdf) {
         try {
-          const img = await extractPdfViaWorker(file);
-          loadedLabelImages.push(img);
+          const pages = await parsePdfFile(file);
+          loadedLabelImages.push(...pages);
         } catch (err) {
-          fileStatus.textContent = "PDF rasterizer notice: Please screenshot/export label as image if browser blocks canvas workers.";
+          console.error("PDF Parsing error:", err);
+          fileStatus.textContent = "Error reading PDF: " + err.message;
         }
       } else {
         const img = new Image();
@@ -213,7 +218,7 @@
     }
 
     if (loadedLabelImages.length > 0) {
-      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s).";
+      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s) successfully.";
       if (loadedLabelImages.length > 1 && printCountSelect.value === "1") {
         printCountSelect.value = Math.min(4, loadedLabelImages.length).toString();
       }
@@ -221,25 +226,31 @@
     }
   }
 
-  function extractPdfViaWorker(file) {
-    return new Promise((resolve, reject) => {
-      // If native PDF rendering is supported via PDF.js or ImageBitmap
-      createImageBitmap(file).then(bmp => {
-        const c = document.createElement("canvas");
-        c.width = bmp.width;
-        c.height = bmp.height;
-        c.getContext("2d").drawImage(bmp, 0, 0);
-        const img = new Image();
-        img.src = c.toDataURL();
-        img.onload = () => resolve(img);
-      }).catch(() => {
-        // Fallback for browsers that require standard image input
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("PDF needs rasterization"));
-      });
-    });
+  async function parsePdfFile(file) {
+    if (!window.pdfjsLib) {
+      throw new Error("PDF renderer is not loaded. Please check your internet connection.");
+    }
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const images = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2.5 });
+      const offscreen = document.createElement("canvas");
+      offscreen.width = viewport.width;
+      offscreen.height = viewport.height;
+      await page.render({
+        canvasContext: offscreen.getContext("2d"),
+        viewport: viewport
+      }).promise;
+
+      const img = new Image();
+      img.src = offscreen.toDataURL("image/png");
+      await new Promise(r => img.onload = r);
+      images.push(img);
+    }
+    return images;
   }
 
   document.getElementById("renderBtn").addEventListener("click", renderSheet);
@@ -255,7 +266,7 @@
     ctx.fillStyle = "#94a3b8";
     ctx.font = "46px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Upload shipping label(s) to preview A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
+    ctx.fillText("Upload PDF shipping label(s) to preview A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
   }
 
   function renderSheet() {
@@ -299,7 +310,7 @@
       cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT }];
     }
 
-    // Print ONLY the selected number of labels; remaining slots are pure white (zero ink wasted)
+    // Only render up to targetCount; empty slots remain pure white to save ink
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (i < targetCount) {
