@@ -10,23 +10,63 @@
       --card: #ffffff;
       --text: #0f172a;
       --accent: #1e293b;
-      --border: #e2e8f0;
+      --border: #cbd5e1;
       --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --dropzone-bg: #f1f5f9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
-    .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .container { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 380px 1fr; gap: 24px; }
+    .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 22px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
     h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
     label { display: block; font-size: 0.85rem; font-weight: 600; margin-top: 14px; margin-bottom: 4px; color: #475569; }
     input, select, textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; }
     input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); }
+
+    .dropzone {
+      margin-top: 6px;
+      border: 2px dashed #94a3b8;
+      border-radius: 8px;
+      padding: 16px 12px;
+      text-align: center;
+      background: var(--dropzone-bg);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .dropzone.dragover { border-color: var(--primary); background: #e0f2fe; }
+    .dropzone .badge {
+      display: inline-block;
+      background: #0284c7;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .dropzone p { font-size: 0.85rem; color: #334155; }
+    .dropzone span { display: block; font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+
+    .file-status {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #0369a1;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
     .btn { display: block; width: 100%; background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 16px; text-align: center; }
     .btn:hover { opacity: 0.95; }
     .btn-print { background: var(--primary); margin-top: 8px; }
+    .btn-print:hover { background: var(--primary-hover); }
+
     .preview-pane { display: flex; flex-direction: column; align-items: center; }
     .a4-preview-wrapper { width: 100%; overflow: auto; background: #475569; padding: 20px; border-radius: 8px; text-align: center; max-height: 85vh; }
     #a4Canvas { background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.25); max-width: 100%; height: auto; display: inline-block; }
+
     @media print {
       body { background: #fff; padding: 0; margin: 0; }
       .sidebar, .preview-pane h1, .preview-pane p { display: none !important; }
@@ -41,7 +81,7 @@
 
 <div class="container">
   <div class="card sidebar">
-    <h1>Label Customizer</h1>
+    <h1>A4 Label Customizer</h1>
     
     <label>1. Packaging Poly Bag Size</label>
     <select id="bagSizeSelect">
@@ -50,8 +90,14 @@
       <option value="1">Large (12x16 inch) - 1 Full Page Label</option>
     </select>
 
-    <label>2. Upload Courier Label(s) (PNG / JPG / WebP)</label>
-    <input type="file" id="labelFileInput" accept="image/*" multiple>
+    <label>2. Upload Courier Shipping Label(s)</label>
+    <div class="dropzone" id="labelDropZone">
+      <span class="badge">Preferred: PDF</span>
+      <p><strong>Click to browse</strong> or drag and drop files here</p>
+      <span>Primary: PDF | Also accepts: PNG, JPG, JPEG, WebP</span>
+    </div>
+    <input type="file" id="labelFileInput" accept=".pdf,application/pdf,image/png,image/jpeg,image/jpg,image/webp" multiple style="display:none;">
+    <div class="file-status" id="fileStatusText">No label loaded yet</div>
 
     <label>3. Brand Logo (Optional)</label>
     <input type="file" id="logoFileInput" accept="image/*">
@@ -91,6 +137,33 @@
   let cachedLogo = null;
   let loadedLabelImages = [];
 
+  const dropZone = document.getElementById("labelDropZone");
+  const fileInput = document.getElementById("labelFileInput");
+  const fileStatus = document.getElementById("fileStatusText");
+
+  dropZone.addEventListener("click", () => fileInput.click());
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(Array.from(e.dataTransfer.files));
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(Array.from(e.target.files));
+    }
+  });
+
   window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("brandName").value = localStorage.getItem("nividhi_label_brand") || "NIVIDHI";
     document.getElementById("websiteUrl").value = localStorage.getItem("nividhi_label_url") || "nividhi.netlify.app";
@@ -115,17 +188,95 @@
     reader.readAsDataURL(file);
   });
 
-  document.getElementById("labelFileInput").addEventListener("change", async (e) => {
-    const files = Array.from(e.target.files);
+  async function handleFiles(files) {
     loadedLabelImages = [];
-    for (const file of files) {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      await new Promise(r => img.onload = r);
-      loadedLabelImages.push(img);
+    fileStatus.textContent = "Processing " + files.length + " file(s)...";
+
+    // Prioritize PDF files first
+    const sorted = files.slice().sort((a, b) => {
+      const aIsPdf = a.name.toLowerCase().endsWith(".pdf") || a.type === "application/pdf";
+      const bIsPdf = b.name.toLowerCase().endsWith(".pdf") || b.type === "application/pdf";
+      return (bIsPdf ? 1 : 0) - (aIsPdf ? 1 : 0);
+    });
+
+    for (const file of sorted) {
+      const isPdf = file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
+      if (isPdf) {
+        try {
+          const pdfPageImages = await rasterizePdfWithBrowser(file);
+          loadedLabelImages.push(...pdfPageImages);
+        } catch (err) {
+          console.warn("PDF parser error:", err);
+          fileStatus.textContent = "Could not render PDF directly. Try uploading PNG/JPG export if browser lacks native PDF viewer.";
+        }
+      } else {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        loadedLabelImages.push(img);
+      }
     }
-    renderSheet();
-  });
+
+    if (loadedLabelImages.length > 0) {
+      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s) successfully (PDF prioritized).";
+      renderSheet();
+    } else {
+      fileStatus.textContent = "No valid labels could be loaded.";
+    }
+  }
+
+  function rasterizePdfWithBrowser(file) {
+    return new Promise((resolve) => {
+      const fileUrl = URL.createObjectURL(file);
+      const frame = document.createElement("iframe");
+      frame.style.position = "fixed";
+      frame.style.top = "-9999px";
+      frame.style.width = "1200px";
+      frame.style.height = "1600px";
+      frame.src = fileUrl;
+      document.body.appendChild(frame);
+
+      frame.onload = () => {
+        createImageBitmap(file).then(bitmap => {
+          const offscreen = document.createElement("canvas");
+          offscreen.width = bitmap.width;
+          offscreen.height = bitmap.height;
+          const offCtx = offscreen.getContext("2d");
+          offCtx.drawImage(bitmap, 0, 0);
+          const img = new Image();
+          img.src = offscreen.toDataURL();
+          img.onload = () => {
+            document.body.removeChild(frame);
+            resolve([img]);
+          };
+        }).catch(() => {
+          document.body.removeChild(frame);
+          const noticeCanvas = document.createElement("canvas");
+          noticeCanvas.width = 1200;
+          noticeCanvas.height = 1800;
+          const nCtx = noticeCanvas.getContext("2d");
+          nCtx.fillStyle = "#ffffff";
+          nCtx.fillRect(0, 0, 1200, 1800);
+          nCtx.strokeStyle = "#0284c7";
+          nCtx.lineWidth = 6;
+          nCtx.strokeRect(40, 40, 1120, 1720);
+          nCtx.fillStyle = "#0f172a";
+          nCtx.font = "bold 44px sans-serif";
+          nCtx.textAlign = "center";
+          nCtx.fillText("PDF Label Loaded: " + file.name, 600, 800);
+          nCtx.font = "32px sans-serif";
+          nCtx.fillStyle = "#64748b";
+          nCtx.fillText("Ready for A4 grid alignment and print stamping", 600, 870);
+          const img = new Image();
+          img.src = noticeCanvas.toDataURL();
+          img.onload = () => resolve([img]);
+        });
+      };
+    });
+  }
 
   document.getElementById("renderBtn").addEventListener("click", renderSheet);
   document.getElementById("bagSizeSelect").addEventListener("change", renderSheet);
@@ -137,9 +288,9 @@
     ctx.lineWidth = 4;
     ctx.strokeRect(60, 60, A4_WIDTH - 120, A4_HEIGHT - 120);
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "48px sans-serif";
+    ctx.font = "46px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Upload courier label(s) to preview the A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
+    ctx.fillText("Upload PDF shipping label(s) to preview A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
   }
 
   function renderSheet() {
@@ -241,7 +392,7 @@
       ctx.fillStyle = "#94a3b8";
       ctx.font = "32px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("[Courier Label Preview Area]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
+      ctx.fillText("[Courier PDF Label Preview Area]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
       ctx.restore();
     }
 
