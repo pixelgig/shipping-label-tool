@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A4 Shipping Label Customizer & Sizer</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --accent: #1e293b;
+      --border: #e2e8f0;
+      --primary: #0284c7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 24px; }
+    .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-top: 14px; margin-bottom: 4px; color: #475569; }
+    input, select, textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: #fff; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); }
+    .btn { display: block; width: 100%; background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 16px; text-align: center; }
+    .btn:hover { opacity: 0.95; }
+    .btn-print { background: var(--primary); margin-top: 8px; }
+    .preview-pane { display: flex; flex-direction: column; align-items: center; }
+    .a4-preview-wrapper { width: 100%; overflow: auto; background: #475569; padding: 20px; border-radius: 8px; text-align: center; max-height: 85vh; }
+    #a4Canvas { background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.25); max-width: 100%; height: auto; display: inline-block; }
+    @media print {
+      body { background: #fff; padding: 0; margin: 0; }
+      .sidebar, .preview-pane h1, .preview-pane p { display: none !important; }
+      .container { display: block; max-width: 100%; margin: 0; }
+      .card { border: none; box-shadow: none; padding: 0; }
+      .a4-preview-wrapper { background: #fff; padding: 0; overflow: visible; max-height: none; }
+      #a4Canvas { width: 100% !important; max-width: 100% !important; height: auto !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card sidebar">
+    <h1>Label Customizer</h1>
+    
+    <label>1. Packaging Poly Bag Size</label>
+    <select id="bagSizeSelect">
+      <option value="4">Small (6x8 or 7x10 inch) - 4 Labels / Sheet (A6)</option>
+      <option value="2">Medium (9x12 or 10x14 inch) - 2 Labels / Sheet (A5)</option>
+      <option value="1">Large (12x16 inch) - 1 Full Page Label</option>
+    </select>
+
+    <label>2. Upload Courier Label(s) (PNG / JPG / WebP)</label>
+    <input type="file" id="labelFileInput" accept="image/*" multiple>
+
+    <label>3. Brand Logo (Optional)</label>
+    <input type="file" id="logoFileInput" accept="image/*">
+
+    <label>4. Brand / Storefront Details</label>
+    <input type="text" id="brandName" placeholder="Brand Name (e.g., NIVIDHI)">
+    <input type="text" id="websiteUrl" placeholder="Website URL (e.g., nividhi.netlify.app)" style="margin-top:6px;">
+
+    <label>5. Custom Bottom Message</label>
+    <textarea id="thankYouMsg" rows="2">Thank you for supporting our small business!</textarea>
+
+    <label>6. Disclaimer Note</label>
+    <textarea id="disclaimerMsg" rows="2">Please record a 360 degree unboxing video without cuts for damage/missing claims.</textarea>
+
+    <button class="btn" id="renderBtn">Refresh A4 Layout</button>
+    <button class="btn btn-print" onclick="window.print()">Print A4 Sheet (Ctrl/Cmd + P)</button>
+  </div>
+
+  <div class="card preview-pane">
+    <h1>A4 Sheet Print Preview</h1>
+    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px;">Light dotted lines guide straight scissor cuts.</p>
+    <div class="a4-preview-wrapper">
+      <canvas id="a4Canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+  const A4_WIDTH = 2480;
+  const A4_HEIGHT = 3508;
+  const canvas = document.getElementById("a4Canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = A4_WIDTH;
+  canvas.height = A4_HEIGHT;
+
+  let cachedLogo = null;
+  let loadedLabelImages = [];
+
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("brandName").value = localStorage.getItem("nividhi_label_brand") || "NIVIDHI";
+    document.getElementById("websiteUrl").value = localStorage.getItem("nividhi_label_url") || "nividhi.netlify.app";
+    renderBlankA4();
+  });
+
+  ["brandName", "websiteUrl"].forEach(id => {
+    document.getElementById(id).addEventListener("input", (e) => {
+      localStorage.setItem("nividhi_label_" + (id === "brandName" ? "brand" : "url"), e.target.value);
+    });
+  });
+
+  document.getElementById("logoFileInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => { cachedLogo = img; renderSheet(); };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("labelFileInput").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files);
+    loadedLabelImages = [];
+    for (const file of files) {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise(r => img.onload = r);
+      loadedLabelImages.push(img);
+    }
+    renderSheet();
+  });
+
+  document.getElementById("renderBtn").addEventListener("click", renderSheet);
+  document.getElementById("bagSizeSelect").addEventListener("change", renderSheet);
+
+  function renderBlankA4() {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(60, 60, A4_WIDTH - 120, A4_HEIGHT - 120);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "48px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Upload courier label(s) to preview the A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
+  }
+
+  function renderSheet() {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+
+    const gridType = parseInt(document.getElementById("bagSizeSelect").value);
+    const brand = document.getElementById("brandName").value || "NIVIDHI";
+    const url = document.getElementById("websiteUrl").value || "";
+    const thankYou = document.getElementById("thankYouMsg").value;
+    const disclaimer = document.getElementById("disclaimerMsg").value;
+
+    let cells = [];
+    if (gridType === 4) {
+      const w = A4_WIDTH / 2;
+      const h = A4_HEIGHT / 2;
+      cells = [
+        { x: 0, y: 0, w, h },
+        { x: w, y: 0, w, h },
+        { x: 0, y: h, w, h },
+        { x: w, y: h, w, h }
+      ];
+      drawDottedLine(w, 0, w, A4_HEIGHT);
+      drawDottedLine(0, h, A4_WIDTH, h);
+    } else if (gridType === 2) {
+      const w = A4_WIDTH;
+      const h = A4_HEIGHT / 2;
+      cells = [
+        { x: 0, y: 0, w, h },
+        { x: 0, y: h, w, h }
+      ];
+      drawDottedLine(0, h, A4_WIDTH, h);
+    } else {
+      cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT }];
+    }
+
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      const labelImg = loadedLabelImages[i % loadedLabelImages.length] || null;
+      drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer);
+    }
+  }
+
+  function drawDottedLine(x1, y1, x2, y2) {
+    ctx.save();
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([16, 12]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer) {
+    const pad = 50;
+    const cx = cell.x + pad;
+    const cy = cell.y + pad;
+    const cw = cell.w - (pad * 2);
+    const ch = cell.h - (pad * 2);
+
+    const headerHeight = Math.floor(ch * 0.12);
+    const footerHeight = Math.floor(ch * 0.16);
+    const bodyHeight = ch - headerHeight - footerHeight;
+
+    // Header
+    ctx.save();
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 44px Georgia, serif";
+    ctx.textAlign = "left";
+    let textX = cx;
+
+    if (cachedLogo) {
+      const logoSize = headerHeight - 10;
+      ctx.drawImage(cachedLogo, cx, cy, logoSize, logoSize);
+      textX += logoSize + 20;
+    }
+
+    ctx.fillText(brand, textX, cy + 48);
+    ctx.font = "26px sans-serif";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(url, textX, cy + 86);
+    ctx.restore();
+
+    // Courier Label
+    if (labelImg) {
+      const scale = Math.min(cw / labelImg.width, bodyHeight / labelImg.height);
+      const lw = labelImg.width * scale;
+      const lh = labelImg.height * scale;
+      const lx = cx + (cw - lw) / 2;
+      const ly = cy + headerHeight + (bodyHeight - lh) / 2;
+      ctx.drawImage(labelImg, lx, ly, lw, lh);
+    } else {
+      ctx.save();
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx, cy + headerHeight, cw, bodyHeight);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("[Courier Label Preview Area]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
+      ctx.restore();
+    }
+
+    // Footer
+    const fy = cy + headerHeight + bodyHeight + 10;
+    ctx.save();
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, fy);
+    ctx.lineTo(cx + cw, fy);
+    ctx.stroke();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 24px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(thankYou, cx, fy + 40);
+
+    ctx.fillStyle = "#dc2626";
+    ctx.font = "italic 20px sans-serif";
+    ctx.fillText("Notice: " + disclaimer, cx, fy + 76);
+    ctx.restore();
+  }
+</script>
+
+</body>
+</html>
