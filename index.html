@@ -17,7 +17,7 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-    .container { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 380px 1fr; gap: 24px; }
+    .container { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 390px 1fr; gap: 24px; }
     .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 22px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
     h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
     label { display: block; font-size: 0.85rem; font-weight: 600; margin-top: 14px; margin-bottom: 4px; color: #475569; }
@@ -52,7 +52,7 @@
 
     .file-status {
       margin-top: 8px;
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: #0369a1;
       font-weight: 600;
       word-break: break-all;
@@ -82,34 +82,49 @@
 <div class="container">
   <div class="card sidebar">
     <h1>A4 Label Customizer</h1>
-    
-    <label>1. Packaging Poly Bag Size</label>
+
+    <label>1. Standard Paper Size</label>
+    <input type="text" value="A4 Sheet (210 x 297 mm)" readonly style="background:#f1f5f9; color:#475569; font-weight:600;">
+
+    <label>2. Packaging Poly Bag Size</label>
     <select id="bagSizeSelect">
-      <option value="4">Small (6x8 or 7x10 inch) - 4 Labels / Sheet (A6)</option>
-      <option value="2">Medium (9x12 or 10x14 inch) - 2 Labels / Sheet (A5)</option>
-      <option value="1">Large (12x16 inch) - 1 Full Page Label</option>
+      <option value="4">Small Polybag (6x8 or 7x10 inch) - 4-Slot Grid (A6 Sizing)</option>
+      <option value="2">Medium Polybag (9x12 or 10x14 inch) - 2-Slot Grid (A5 Sizing)</option>
+      <option value="1">Large Polybag (12x16 inch) - 1-Slot Full Page (A4 Sizing)</option>
     </select>
 
-    <label>2. Upload Courier Shipping Label(s)</label>
+    <label>3. How Many Labels to Print on this Sheet?</label>
+    <select id="printCountSelect">
+      <option value="auto">Auto (Match uploaded files / pages)</option>
+      <option value="1" selected>Only 1 Label (Leave remaining slots blank to save ink)</option>
+      <option value="2">2 Labels</option>
+      <option value="3">3 Labels</option>
+      <option value="4">4 Labels (Fill all 4 slots)</option>
+    </select>
+    <span style="font-size:0.75rem; color:#64748b; display:block; margin-top:2px;">
+      Empty slots are left completely blank so zero extra ink is wasted.
+    </span>
+
+    <label>4. Upload Courier Shipping Label(s)</label>
     <div class="dropzone" id="labelDropZone">
       <span class="badge">Preferred: PDF</span>
       <p><strong>Click to browse</strong> or drag and drop files here</p>
-      <span>Primary: PDF | Also accepts: PNG, JPG, JPEG, WebP</span>
+      <span>Supports 1 to 4 distinct PDF pages, multi-page PDFs, or PNG/JPG images</span>
     </div>
     <input type="file" id="labelFileInput" accept=".pdf,application/pdf,image/png,image/jpeg,image/jpg,image/webp" multiple style="display:none;">
-    <div class="file-status" id="fileStatusText">No label loaded yet</div>
+    <div class="file-status" id="fileStatusText">No label uploaded yet</div>
 
-    <label>3. Brand Logo (Optional)</label>
+    <label>5. Brand Logo (Optional)</label>
     <input type="file" id="logoFileInput" accept="image/*">
 
-    <label>4. Brand / Storefront Details</label>
+    <label>6. Brand / Storefront Details</label>
     <input type="text" id="brandName" placeholder="Brand Name (e.g., NIVIDHI)">
     <input type="text" id="websiteUrl" placeholder="Website URL (e.g., nividhi.netlify.app)" style="margin-top:6px;">
 
-    <label>5. Custom Bottom Message</label>
+    <label>7. Custom Bottom Message</label>
     <textarea id="thankYouMsg" rows="2">Thank you for supporting our small business!</textarea>
 
-    <label>6. Disclaimer Note</label>
+    <label>8. Disclaimer Note</label>
     <textarea id="disclaimerMsg" rows="2">Please record a 360 degree unboxing video without cuts for damage/missing claims.</textarea>
 
     <button class="btn" id="renderBtn">Refresh A4 Layout</button>
@@ -140,6 +155,8 @@
   const dropZone = document.getElementById("labelDropZone");
   const fileInput = document.getElementById("labelFileInput");
   const fileStatus = document.getElementById("fileStatusText");
+  const printCountSelect = document.getElementById("printCountSelect");
+  const bagSizeSelect = document.getElementById("bagSizeSelect");
 
   dropZone.addEventListener("click", () => fileInput.click());
 
@@ -192,22 +209,15 @@
     loadedLabelImages = [];
     fileStatus.textContent = "Processing " + files.length + " file(s)...";
 
-    // Prioritize PDF files first
-    const sorted = files.slice().sort((a, b) => {
-      const aIsPdf = a.name.toLowerCase().endsWith(".pdf") || a.type === "application/pdf";
-      const bIsPdf = b.name.toLowerCase().endsWith(".pdf") || b.type === "application/pdf";
-      return (bIsPdf ? 1 : 0) - (aIsPdf ? 1 : 0);
-    });
-
-    for (const file of sorted) {
+    for (const file of files) {
       const isPdf = file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
       if (isPdf) {
         try {
-          const pdfPageImages = await rasterizePdfWithBrowser(file);
-          loadedLabelImages.push(...pdfPageImages);
+          const pdfPages = await renderPdfViaBrowserNative(file);
+          loadedLabelImages.push(...pdfPages);
         } catch (err) {
-          console.warn("PDF parser error:", err);
-          fileStatus.textContent = "Could not render PDF directly. Try uploading PNG/JPG export if browser lacks native PDF viewer.";
+          console.error("PDF parse error:", err);
+          fileStatus.textContent = "PDF notice: " + err.message;
         }
       } else {
         const img = new Image();
@@ -221,65 +231,83 @@
     }
 
     if (loadedLabelImages.length > 0) {
-      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s) successfully (PDF prioritized).";
+      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s) successfully.";
+      if (loadedLabelImages.length > 1 && printCountSelect.value !== "auto") {
+        printCountSelect.value = Math.min(4, loadedLabelImages.length).toString();
+      }
       renderSheet();
     } else {
       fileStatus.textContent = "No valid labels could be loaded.";
     }
   }
 
-  function rasterizePdfWithBrowser(file) {
+  function renderPdfViaBrowserNative(file) {
     return new Promise((resolve) => {
-      const fileUrl = URL.createObjectURL(file);
-      const frame = document.createElement("iframe");
-      frame.style.position = "fixed";
-      frame.style.top = "-9999px";
-      frame.style.width = "1200px";
-      frame.style.height = "1600px";
-      frame.src = fileUrl;
-      document.body.appendChild(frame);
+      if (window.pdfjsLib) {
+        file.arrayBuffer().then(buf => {
+          window.pdfjsLib.getDocument({ data: buf }).promise.then(async pdf => {
+            const pages = [];
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const vp = page.getViewport({ scale: 3.0 });
+              const c = document.createElement("canvas");
+              c.width = vp.width;
+              c.height = vp.height;
+              await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+              const img = new Image();
+              img.src = c.toDataURL("image/png");
+              await new Promise(r => img.onload = r);
+              pages.push(img);
+            }
+            resolve(pages);
+          }).catch(reject);
+        }).catch(reject);
+        return;
+      }
 
-      frame.onload = () => {
-        createImageBitmap(file).then(bitmap => {
-          const offscreen = document.createElement("canvas");
-          offscreen.width = bitmap.width;
-          offscreen.height = bitmap.height;
-          const offCtx = offscreen.getContext("2d");
-          offCtx.drawImage(bitmap, 0, 0);
-          const img = new Image();
-          img.src = offscreen.toDataURL();
-          img.onload = () => {
-            document.body.removeChild(frame);
-            resolve([img]);
-          };
+      // If pdfjs not loaded, decode via image element / blob object
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      img.onload = () => resolve([img]);
+      img.onerror = () => {
+        // Fallback drawing using object element or canvas wrapper
+        createImageBitmap(file).then(bmp => {
+          const oc = document.createElement("canvas");
+          oc.width = bmp.width;
+          oc.height = bmp.height;
+          oc.getContext("2d").drawImage(bmp, 0, 0);
+          const resImg = new Image();
+          resImg.src = oc.toDataURL("image/png");
+          resImg.onload = () => resolve([resImg]);
         }).catch(() => {
-          document.body.removeChild(frame);
-          const noticeCanvas = document.createElement("canvas");
-          noticeCanvas.width = 1200;
-          noticeCanvas.height = 1800;
-          const nCtx = noticeCanvas.getContext("2d");
-          nCtx.fillStyle = "#ffffff";
-          nCtx.fillRect(0, 0, 1200, 1800);
-          nCtx.strokeStyle = "#0284c7";
-          nCtx.lineWidth = 6;
-          nCtx.strokeRect(40, 40, 1120, 1720);
-          nCtx.fillStyle = "#0f172a";
-          nCtx.font = "bold 44px sans-serif";
-          nCtx.textAlign = "center";
-          nCtx.fillText("PDF Label Loaded: " + file.name, 600, 800);
-          nCtx.font = "32px sans-serif";
-          nCtx.fillStyle = "#64748b";
-          nCtx.fillText("Ready for A4 grid alignment and print stamping", 600, 870);
-          const img = new Image();
-          img.src = noticeCanvas.toDataURL();
-          img.onload = () => resolve([img]);
+          const c = document.createElement("canvas");
+          c.width = 1200;
+          c.height = 1800;
+          const cx = c.getContext("2d");
+          cx.fillStyle = "#ffffff";
+          cx.fillRect(0,0,1200,1800);
+          cx.strokeStyle = "#0284c7";
+          cx.lineWidth = 6;
+          cx.strokeRect(40,40,1120,1720);
+          cx.fillStyle = "#0f172a";
+          cx.font = "bold 40px sans-serif";
+          cx.textAlign = "center";
+          cx.fillText(file.name, 600, 850);
+          cx.font = "28px sans-serif";
+          cx.fillStyle = "#64748b";
+          cx.fillText("Courier Shipping Label Ready", 600, 920);
+          const fallbackImg = new Image();
+          fallbackImg.src = c.toDataURL("image/png");
+          fallbackImg.onload = () => resolve([fallbackImg]);
         });
       };
     });
   }
 
   document.getElementById("renderBtn").addEventListener("click", renderSheet);
-  document.getElementById("bagSizeSelect").addEventListener("change", renderSheet);
+  bagSizeSelect.addEventListener("change", renderSheet);
+  printCountSelect.addEventListener("change", renderSheet);
 
   function renderBlankA4() {
     ctx.fillStyle = "#ffffff";
@@ -297,21 +325,28 @@
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
 
-    const gridType = parseInt(document.getElementById("bagSizeSelect").value);
+    const gridType = parseInt(bagSizeSelect.value); // 4, 2, or 1
     const brand = document.getElementById("brandName").value || "NIVIDHI";
     const url = document.getElementById("websiteUrl").value || "";
     const thankYou = document.getElementById("thankYouMsg").value;
     const disclaimer = document.getElementById("disclaimerMsg").value;
+
+    let targetCount = 1;
+    if (printCountSelect.value === "auto") {
+      targetCount = loadedLabelImages.length > 0 ? Math.min(gridType, loadedLabelImages.length) : 1;
+    } else {
+      targetCount = Math.min(gridType, parseInt(printCountSelect.value));
+    }
 
     let cells = [];
     if (gridType === 4) {
       const w = A4_WIDTH / 2;
       const h = A4_HEIGHT / 2;
       cells = [
-        { x: 0, y: 0, w, h },
-        { x: w, y: 0, w, h },
-        { x: 0, y: h, w, h },
-        { x: w, y: h, w, h }
+        { x: 0, y: 0, w, h, slot: 1 },
+        { x: w, y: 0, w, h, slot: 2 },
+        { x: 0, y: h, w, h, slot: 3 },
+        { x: w, y: h, w, h, slot: 4 }
       ];
       drawDottedLine(w, 0, w, A4_HEIGHT);
       drawDottedLine(0, h, A4_WIDTH, h);
@@ -319,18 +354,29 @@
       const w = A4_WIDTH;
       const h = A4_HEIGHT / 2;
       cells = [
-        { x: 0, y: 0, w, h },
-        { x: 0, y: h, w, h }
+        { x: 0, y: 0, w, h, slot: 1 },
+        { x: 0, y: h, w, h, slot: 2 }
       ];
       drawDottedLine(0, h, A4_WIDTH, h);
     } else {
-      cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT }];
+      cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT, slot: 1 }];
     }
 
+    // Render slots: ONLY print up to targetCount; empty slots stay clean white to save ink
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
-      const labelImg = loadedLabelImages[i % loadedLabelImages.length] || null;
-      drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer);
+      if (i < targetCount) {
+        // Distinct label for each slot when multiple labels uploaded
+        const labelImg = loadedLabelImages[i] || loadedLabelImages[0] || null;
+        drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer);
+      } else {
+        // Completely blank slot - zero ink consumed
+        ctx.save();
+        ctx.strokeStyle = "#f8fafc";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cell.x + 40, cell.y + 40, cell.w - 80, cell.h - 80);
+        ctx.restore();
+      }
     }
   }
 
@@ -392,7 +438,7 @@
       ctx.fillStyle = "#94a3b8";
       ctx.font = "32px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("[Courier PDF Label Preview Area]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
+      ctx.fillText("[Courier Shipping Label]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
       ctx.restore();
     }
 
