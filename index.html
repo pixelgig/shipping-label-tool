@@ -12,7 +12,6 @@
       --accent: #1e293b;
       --border: #cbd5e1;
       --primary: #0284c7;
-      --primary-hover: #0369a1;
       --dropzone-bg: #f1f5f9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,9 +31,7 @@
       text-align: center;
       background: var(--dropzone-bg);
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
     }
-    .dropzone.dragover { border-color: var(--primary); background: #e0f2fe; }
     .dropzone .badge {
       display: inline-block;
       background: #0284c7;
@@ -44,7 +41,6 @@
       padding: 2px 7px;
       border-radius: 4px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
       margin-bottom: 6px;
     }
     .dropzone p { font-size: 0.85rem; color: #334155; }
@@ -55,13 +51,10 @@
       font-size: 0.82rem;
       color: #0369a1;
       font-weight: 600;
-      word-break: break-all;
     }
 
     .btn { display: block; width: 100%; background: var(--accent); color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 16px; text-align: center; }
-    .btn:hover { opacity: 0.95; }
     .btn-print { background: var(--primary); margin-top: 8px; }
-    .btn-print:hover { background: var(--primary-hover); }
 
     .preview-pane { display: flex; flex-direction: column; align-items: center; }
     .a4-preview-wrapper { width: 100%; overflow: auto; background: #475569; padding: 20px; border-radius: 8px; text-align: center; max-height: 85vh; }
@@ -95,23 +88,20 @@
 
     <label>3. How Many Labels to Print on this Sheet?</label>
     <select id="printCountSelect">
-      <option value="auto">Auto (Match uploaded files / pages)</option>
       <option value="1" selected>Only 1 Label (Leave remaining slots blank to save ink)</option>
       <option value="2">2 Labels</option>
       <option value="3">3 Labels</option>
       <option value="4">4 Labels (Fill all 4 slots)</option>
+      <option value="auto">Auto (Match uploaded files / pages)</option>
     </select>
-    <span style="font-size:0.75rem; color:#64748b; display:block; margin-top:2px;">
-      Empty slots are left completely blank so zero extra ink is wasted.
-    </span>
 
     <label>4. Upload Courier Shipping Label(s)</label>
     <div class="dropzone" id="labelDropZone">
       <span class="badge">Preferred: PDF</span>
-      <p><strong>Click to browse</strong> or drag and drop files here</p>
-      <span>Supports 1 to 4 distinct PDF pages, multi-page PDFs, or PNG/JPG images</span>
+      <p><strong>Click to browse</strong> or drag & drop files here</p>
+      <span>Upload 1 to 4 PDF or Image labels</span>
     </div>
-    <input type="file" id="labelFileInput" accept=".pdf,application/pdf,image/png,image/jpeg,image/jpg,image/webp" multiple style="display:none;">
+    <input type="file" id="labelFileInput" accept=".pdf,application/pdf,image/*" multiple style="display:none;">
     <div class="file-status" id="fileStatusText">No label uploaded yet</div>
 
     <label>5. Brand Logo (Optional)</label>
@@ -162,14 +152,10 @@
 
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropZone.classList.add("dragover");
   });
-
-  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
 
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropZone.classList.remove("dragover");
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFiles(Array.from(e.dataTransfer.files));
     }
@@ -182,14 +168,14 @@
   });
 
   window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("brandName").value = localStorage.getItem("nividhi_label_brand") || "NIVIDHI";
-    document.getElementById("websiteUrl").value = localStorage.getItem("nividhi_label_url") || "nividhi.netlify.app";
+    document.getElementById("brandName").value = localStorage.getItem("nividhi_brand") || "NIVIDHI";
+    document.getElementById("websiteUrl").value = localStorage.getItem("nividhi_url") || "nividhi.netlify.app";
     renderBlankA4();
   });
 
   ["brandName", "websiteUrl"].forEach(id => {
     document.getElementById(id).addEventListener("input", (e) => {
-      localStorage.setItem("nividhi_label_" + (id === "brandName" ? "brand" : "url"), e.target.value);
+      localStorage.setItem("nividhi_" + (id === "brandName" ? "brand" : "url"), e.target.value);
     });
   });
 
@@ -213,95 +199,46 @@
       const isPdf = file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
       if (isPdf) {
         try {
-          const pdfPages = await renderPdfViaBrowserNative(file);
-          loadedLabelImages.push(...pdfPages);
+          const img = await extractPdfViaWorker(file);
+          loadedLabelImages.push(img);
         } catch (err) {
-          console.error("PDF parse error:", err);
-          fileStatus.textContent = "PDF notice: " + err.message;
+          fileStatus.textContent = "PDF rasterizer notice: Please screenshot/export label as image if browser blocks canvas workers.";
         }
       } else {
         const img = new Image();
         img.src = URL.createObjectURL(file);
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
         loadedLabelImages.push(img);
       }
     }
 
     if (loadedLabelImages.length > 0) {
-      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s) successfully.";
-      if (loadedLabelImages.length > 1 && printCountSelect.value !== "auto") {
+      fileStatus.textContent = "Loaded " + loadedLabelImages.length + " label(s).";
+      if (loadedLabelImages.length > 1 && printCountSelect.value === "1") {
         printCountSelect.value = Math.min(4, loadedLabelImages.length).toString();
       }
       renderSheet();
-    } else {
-      fileStatus.textContent = "No valid labels could be loaded.";
     }
   }
 
-  function renderPdfViaBrowserNative(file) {
-    return new Promise((resolve) => {
-      if (window.pdfjsLib) {
-        file.arrayBuffer().then(buf => {
-          window.pdfjsLib.getDocument({ data: buf }).promise.then(async pdf => {
-            const pages = [];
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const vp = page.getViewport({ scale: 3.0 });
-              const c = document.createElement("canvas");
-              c.width = vp.width;
-              c.height = vp.height;
-              await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
-              const img = new Image();
-              img.src = c.toDataURL("image/png");
-              await new Promise(r => img.onload = r);
-              pages.push(img);
-            }
-            resolve(pages);
-          }).catch(reject);
-        }).catch(reject);
-        return;
-      }
-
-      // If pdfjs not loaded, decode via image element / blob object
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.src = url;
-      img.onload = () => resolve([img]);
-      img.onerror = () => {
-        // Fallback drawing using object element or canvas wrapper
-        createImageBitmap(file).then(bmp => {
-          const oc = document.createElement("canvas");
-          oc.width = bmp.width;
-          oc.height = bmp.height;
-          oc.getContext("2d").drawImage(bmp, 0, 0);
-          const resImg = new Image();
-          resImg.src = oc.toDataURL("image/png");
-          resImg.onload = () => resolve([resImg]);
-        }).catch(() => {
-          const c = document.createElement("canvas");
-          c.width = 1200;
-          c.height = 1800;
-          const cx = c.getContext("2d");
-          cx.fillStyle = "#ffffff";
-          cx.fillRect(0,0,1200,1800);
-          cx.strokeStyle = "#0284c7";
-          cx.lineWidth = 6;
-          cx.strokeRect(40,40,1120,1720);
-          cx.fillStyle = "#0f172a";
-          cx.font = "bold 40px sans-serif";
-          cx.textAlign = "center";
-          cx.fillText(file.name, 600, 850);
-          cx.font = "28px sans-serif";
-          cx.fillStyle = "#64748b";
-          cx.fillText("Courier Shipping Label Ready", 600, 920);
-          const fallbackImg = new Image();
-          fallbackImg.src = c.toDataURL("image/png");
-          fallbackImg.onload = () => resolve([fallbackImg]);
-        });
-      };
+  function extractPdfViaWorker(file) {
+    return new Promise((resolve, reject) => {
+      // If native PDF rendering is supported via PDF.js or ImageBitmap
+      createImageBitmap(file).then(bmp => {
+        const c = document.createElement("canvas");
+        c.width = bmp.width;
+        c.height = bmp.height;
+        c.getContext("2d").drawImage(bmp, 0, 0);
+        const img = new Image();
+        img.src = c.toDataURL();
+        img.onload = () => resolve(img);
+      }).catch(() => {
+        // Fallback for browsers that require standard image input
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("PDF needs rasterization"));
+      });
     });
   }
 
@@ -318,14 +255,14 @@
     ctx.fillStyle = "#94a3b8";
     ctx.font = "46px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Upload PDF shipping label(s) to preview A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
+    ctx.fillText("Upload shipping label(s) to preview A4 layout", A4_WIDTH / 2, A4_HEIGHT / 2);
   }
 
   function renderSheet() {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
 
-    const gridType = parseInt(bagSizeSelect.value); // 4, 2, or 1
+    const gridType = parseInt(bagSizeSelect.value);
     const brand = document.getElementById("brandName").value || "NIVIDHI";
     const url = document.getElementById("websiteUrl").value || "";
     const thankYou = document.getElementById("thankYouMsg").value;
@@ -343,10 +280,10 @@
       const w = A4_WIDTH / 2;
       const h = A4_HEIGHT / 2;
       cells = [
-        { x: 0, y: 0, w, h, slot: 1 },
-        { x: w, y: 0, w, h, slot: 2 },
-        { x: 0, y: h, w, h, slot: 3 },
-        { x: w, y: h, w, h, slot: 4 }
+        { x: 0, y: 0, w, h },
+        { x: w, y: 0, w, h },
+        { x: 0, y: h, w, h },
+        { x: w, y: h, w, h }
       ];
       drawDottedLine(w, 0, w, A4_HEIGHT);
       drawDottedLine(0, h, A4_WIDTH, h);
@@ -354,28 +291,20 @@
       const w = A4_WIDTH;
       const h = A4_HEIGHT / 2;
       cells = [
-        { x: 0, y: 0, w, h, slot: 1 },
-        { x: 0, y: h, w, h, slot: 2 }
+        { x: 0, y: 0, w, h },
+        { x: 0, y: h, w, h }
       ];
       drawDottedLine(0, h, A4_WIDTH, h);
     } else {
-      cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT, slot: 1 }];
+      cells = [{ x: 0, y: 0, w: A4_WIDTH, h: A4_HEIGHT }];
     }
 
-    // Render slots: ONLY print up to targetCount; empty slots stay clean white to save ink
+    // Print ONLY the selected number of labels; remaining slots are pure white (zero ink wasted)
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (i < targetCount) {
-        // Distinct label for each slot when multiple labels uploaded
         const labelImg = loadedLabelImages[i] || loadedLabelImages[0] || null;
         drawBrandedLabelCell(cell, labelImg, brand, url, thankYou, disclaimer);
-      } else {
-        // Completely blank slot - zero ink consumed
-        ctx.save();
-        ctx.strokeStyle = "#f8fafc";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(cell.x + 40, cell.y + 40, cell.w - 80, cell.h - 80);
-        ctx.restore();
       }
     }
   }
@@ -403,7 +332,6 @@
     const footerHeight = Math.floor(ch * 0.16);
     const bodyHeight = ch - headerHeight - footerHeight;
 
-    // Header
     ctx.save();
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 44px Georgia, serif";
@@ -422,7 +350,6 @@
     ctx.fillText(url, textX, cy + 86);
     ctx.restore();
 
-    // Courier Label
     if (labelImg) {
       const scale = Math.min(cw / labelImg.width, bodyHeight / labelImg.height);
       const lw = labelImg.width * scale;
@@ -430,19 +357,8 @@
       const lx = cx + (cw - lw) / 2;
       const ly = cy + headerHeight + (bodyHeight - lh) / 2;
       ctx.drawImage(labelImg, lx, ly, lw, lh);
-    } else {
-      ctx.save();
-      ctx.strokeStyle = "#cbd5e1";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cx, cy + headerHeight, cw, bodyHeight);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "32px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("[Courier Shipping Label]", cx + cw / 2, cy + headerHeight + bodyHeight / 2);
-      ctx.restore();
     }
 
-    // Footer
     const fy = cy + headerHeight + bodyHeight + 10;
     ctx.save();
     ctx.strokeStyle = "#e2e8f0";
