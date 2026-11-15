@@ -76,7 +76,7 @@
       #a4Canvas { width: 100% !important; max-width: 100% !important; height: auto !important; box-shadow: none !important; }
     }
   </style>
-</head>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="icon.svg"></head>
 <body><div style="background:#152c44;color:white;padding:12px;text-align:center"><a style="color:#bde5ff" href="editor.html">Visual A4 editor</a> · <a style="color:#bde5ff" href="meesho.html">Meesho bag label studio</a> · <a style="color:#bde5ff" href="batch.html">Smart A4 Batch Printer</a></div>
 
 <div class="container">
@@ -465,5 +465,5 @@
   }
 </script>
 
-</body>
+<script>if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));</script></body>
 </html>
