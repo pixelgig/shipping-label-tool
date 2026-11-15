@@ -19,4 +19,11 @@ assert.equal(evaluate("baselineQuote({quotes:{original:49},originalCharge:'51'},
 assert.equal(evaluate("baselineQuote({quotes:{original:49},originalCharge:'51'},'')"),49,'saved original quote restored when input empty');
 assert.equal(evaluate("baselineQuote({originalCharge:'51'},'')"),51,'legacy saved baseline restored');
 assert.equal(evaluate("baselineQuote({},'')"),null,'no observed quote must not be fabricated');
+const sig=evaluate('variantSignature(configs(12)[0],testBox)');
+ctx.testSignature=sig;
+assert.equal(evaluate("restoredVariantQuote({quotes:{v01:55},signatures:{v01:testSignature}},'v01',testSignature)"),55,'same image settings restore quote');
+assert.equal(evaluate("restoredVariantQuote({quotes:{v01:55},signatures:{v01:'different'}},'v01',testSignature)"),null,'changed image settings cannot inherit quote');
+assert.equal(evaluate("restoredVariantQuote({quotes:{v01:55}},'v01',testSignature)"),null,'legacy unverified settings cannot inherit quote');
+node('background').value='white';
+assert.notEqual(evaluate('variantSignature(configs(12)[12-1],testBox)'),sig,'different image configuration changes identity');
 console.log('Image lab unit checks pass: 12/24/36 unique variants, square/portrait geometry, quote parsing, baseline quote precedence, CSV formula escaping');
