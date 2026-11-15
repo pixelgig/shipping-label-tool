@@ -1,0 +1,23 @@
+name: Seller Workbench smoke checks
+on:
+  push:
+    branches: [main, feature/seller-workbench-20-tools]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate scripts and tool definitions
+        run: |
+          node --check workbench.js
+          node --check sw.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const js=fs.readFileSync('workbench.js','utf8');
+          const html=fs.readFileSync('workbench.html','utf8');
+          const names=['Thermal Label Converter','Shipping Label Splitter','Barcode & QR Studio','Volumetric Weight Calculator','Packing Slip & Invoice Generator','Product Image Studio','SKU & Sticker Generator','Marketplace Catalog Converter','Marketplace Profit Calculator','RTO & Return Loss Calculator','GST & HSN Helper','Break-Even & Pricing Calculator','Packing Verification Scanner','Inventory & Stock Manager','Dispatch Manifest Generator','Pick List Generator','Shipping PDF Data Extractor','Shipping Label Privacy Redactor','Packaging Cost Optimizer','Seller Operations Dashboard'];
+          for(const n of names)if(!js.includes(n))throw Error('Missing tool: '+n);
+          if(!html.includes('workbench.js'))throw Error('Missing script reference');
+          console.log('All 20 tool names present and JavaScript parses');
+          NODE
