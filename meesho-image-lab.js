@@ -1,6 +1,6 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const state={source:null,sourceImage:null,sourceKey:'',selectedFile:null,items:[],busy:false};
+const state={source:null,sourceImage:null,sourceKey:'',selectedFile:null,photoRevision:0,items:[],busy:false};
 const BACKGROUNDS={white:'#ffffff',soft:'#f8f8f6',warm:'#faf8f3',cool:'#f6f8fc'};
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 function numberText(n){return Number.isFinite(n)?n.toFixed(2):'—'}
@@ -48,6 +48,7 @@ function updateStats(){
  drawRanking(priced,best,baseline);
 }
 function numericQuote(v){if(String(v??'').trim()==='')return null;const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
+function currentPhoto(file,revision){return state.photoRevision===revision&&$('photo').files[0]===file}
 function sourceChanged(previous,next){return previous!==null&&previous!==next}
 function baselineQuote(observations,entered){const current=numericQuote(entered);return current!==null?current:numericQuote(observations.quotes?.original??observations.originalCharge)}
 function quoteKey(){return'meesho-image-lab-observations-'+state.sourceKey}
@@ -70,25 +71,25 @@ async function hashFile(file){const buff=await file.arrayBuffer();const digest=a
 async function toJpeg(canvas,quality){return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('JPEG encoding failed')),'image/jpeg',quality))}
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 async function generate(){if(state.busy)return;const file=$('photo').files[0];if(!file){message('Choose a product photo first.');return}if(!file.type.startsWith('image/')){message('Only image files are supported.');return}if(file.size>15*1024*1024){message('Please upload an image smaller than 15 MB.');return}
- state.busy=true;$('generate').disabled=true;$('progressBar').style.width='0%';cleanup();
+ state.busy=true;const revision=state.photoRevision;$('generate').disabled=true;$('progressBar').style.width='0%';cleanup();
  try{
-  const image=await readImage(file);const pixels=image.naturalWidth*image.naturalHeight;if(pixels>65e6)throw Error('Image too large. Resize to below 65 megapixels.');
-  const key=await hashFile(file);state.source=file;state.sourceImage=image;state.sourceKey=key;
+  const image=await readImage(file);if(!currentPhoto(file,revision))return;const pixels=image.naturalWidth*image.naturalHeight;if(pixels>65e6)throw Error('Image too large. Resize to below 65 megapixels.');
+  const key=await hashFile(file);if(!currentPhoto(file,revision))return;state.source=file;state.sourceImage=image;state.sourceKey=key;
   const observations=loadQuotes();if(observations.originalCharge!==undefined&&!$('originalCharge').value)$('originalCharge').value=observations.originalCharge;
   const box=cropRectangle(image),count=Number($('count').value)||24,settings=configs(count);
   const src={index:0,name:'Original photo (baseline)',blob:file,url:urlFor(file),quote:baselineQuote(observations,$('originalCharge').value),key:'original',detail:image.naturalWidth+' × '+image.naturalHeight+' original pixels'};
   state.items.push(src);addCard(src);$('empty').classList.add('hidden');
   const canvas=document.createElement('canvas');
   for(let i=0;i<settings.length;i++){
-   const cfg=settings[i];const geometry=paint(image,canvas,box,cfg);const blob=await toJpeg(canvas,cfg.quality);
+   const cfg=settings[i];const geometry=paint(image,canvas,box,cfg);const blob=await toJpeg(canvas,cfg.quality);if(!currentPhoto(file,revision))return;
    const item={index:i+1,name:'Variant '+String(i+1).padStart(2,'0'),blob,url:urlFor(blob),key:'v'+String(i+1).padStart(2,'0'),quote:restoredVariantQuote(observations,'v'+String(i+1).padStart(2,'0'),variantSignature(cfg,box)),signature:variantSignature(cfg,box),detail:cfg.size+'×'+cfg.height+' px · '+Math.round(cfg.padding*100)+'% frame · '+geometry.scaledWidth+'×'+geometry.scaledHeight+' image'};
    state.items.push(item);addCard(item);$('progressBar').style.width=Math.round((i+1)/count*100)+'%';message('Generated '+(i+1)+' / '+count+' variants…');
-   if(i%3===0)await tick();
+   if(i%3===0){await tick();if(!currentPhoto(file,revision))return;}
   }
   canvas.width=canvas.height=0;
   $('downloadCSV').disabled=false;$('downloadZip').disabled=false;message('Created '+count+' real image variants plus the original. Download, test and record real Meesho quotes.');
   updateStats()
- }catch(e){message('Generation error: '+e.message);if(!state.items.length)$('empty').classList.remove('hidden')}
+ }catch(e){if(!currentPhoto(file,revision))return;message('Generation error: '+e.message);if(!state.items.length)$('empty').classList.remove('hidden')}
  finally{state.busy=false;$('generate').disabled=false}}
 function resultsCsv(){const baseline=numericQuote($('originalCharge').value),category=$('category').value,price=numericQuote($('sellingPrice').value);
  const header=['Filename','Variant','Image width px','Image file bytes','Category','Selling price INR','Observed shipping INR','Original quote INR','Observed saving INR'];
@@ -102,4 +103,4 @@ $('originalCharge').addEventListener('input',()=>{const baseline=state.items.fin
 $('applyBulkQuotes').addEventListener('click',()=>{if(!state.items.length){message('Generate variants before entering quotes.');return}let applied=0,invalid=0;for(const line of $('bulkQuotes').value.split(/\r?\n/)){if(!line.trim())continue;const fields=line.trim().split(/[,;\t]/),index=Number((fields[0]||'').replace(/[^0-9]/g,'')),quote=numericQuote(fields[1]);const item=state.items.find(v=>v.index===index);if(!item||quote===null){invalid++;continue}item.quote=quote;const input=$('gallery').querySelector('[data-index="'+index+'"] input');if(input)input.value=quote;if(index===0)$('originalCharge').value=quote;applied++}saveQuotes();updateStats();message('Applied '+applied+' observed rates.'+(invalid?' Skipped '+invalid+' invalid entries.':''))});
 $('category').addEventListener('change',saveQuotes);
 $('sellingPrice').addEventListener('change',saveQuotes);
-$('photo').addEventListener('change',async()=>{cleanup();state.source=null;state.sourceKey='';const file=$('photo').files[0];if(sourceChanged(state.selectedFile,file)){$('originalCharge').value='';$('bulkQuotes').value='';message('New photo selected: previous photo shipping quotes cleared.')}state.selectedFile=file||null;if(!file){$('sourcepreview').style.display='none';message('Choose a photo to begin.');return}try{if(!file.type.startsWith('image/'))throw Error('Select an image.');const img=await readImage(file);const thumb=document.createElement('canvas');const scale=Math.min(1,900/Math.max(img.naturalWidth,img.naturalHeight));thumb.width=Math.max(1,Math.round(img.naturalWidth*scale));thumb.height=Math.max(1,Math.round(img.naturalHeight*scale));thumb.getContext('2d').drawImage(img,0,0,thumb.width,thumb.height);$('sourcepreview').src=thumb.toDataURL('image/jpeg',.85);$('sourcepreview').style.display='block';$('sourceinfo').textContent=img.naturalWidth+' × '+img.naturalHeight+' pixels · '+(file.size/1024/1024).toFixed(2)+' MB · Local processing';thumb.width=thumb.height=0;message('Photo loaded. Choose 12, 24 or 36 variations and generate.')}catch(e){message(e.message)}});
+$('photo').addEventListener('change',async()=>{const revision=++state.photoRevision;cleanup();state.source=null;state.sourceKey='';const file=$('photo').files[0];if(sourceChanged(state.selectedFile,file)){$('originalCharge').value='';$('bulkQuotes').value='';message('New photo selected: previous photo shipping quotes cleared.')}state.selectedFile=file||null;if(!file){$('sourcepreview').style.display='none';message('Choose a photo to begin.');return}try{if(!file.type.startsWith('image/'))throw Error('Select an image.');const img=await readImage(file);if(!currentPhoto(file,revision))return;const thumb=document.createElement('canvas');const scale=Math.min(1,900/Math.max(img.naturalWidth,img.naturalHeight));thumb.width=Math.max(1,Math.round(img.naturalWidth*scale));thumb.height=Math.max(1,Math.round(img.naturalHeight*scale));thumb.getContext('2d').drawImage(img,0,0,thumb.width,thumb.height);$('sourcepreview').src=thumb.toDataURL('image/jpeg',.85);$('sourcepreview').style.display='block';$('sourceinfo').textContent=img.naturalWidth+' × '+img.naturalHeight+' pixels · '+(file.size/1024/1024).toFixed(2)+' MB · Local processing';thumb.width=thumb.height=0;message('Photo loaded. Choose 12, 24 or 36 variations and generate.')}catch(e){if(currentPhoto(file,revision))message(e.message)}});
