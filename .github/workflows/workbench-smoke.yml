@@ -12,6 +12,11 @@ jobs:
         run: |
           node --check workbench.js
           node --check meesho-optimizer.js
+          node --check meesho-image-lab.js
+          test -f meesho-image-lab.html
+          grep -q 'meesho-image-lab.js' meesho-image-lab.html
+          grep -q 'meesho-image-lab.html' index.html
+          grep -q 'meesho-image-lab.html' .github/workflows/publish-pages.yml
           test -f meesho-optimizer.html
           grep -q 'meesho-optimizer.js' meesho-optimizer.html
           node --check sw.js
