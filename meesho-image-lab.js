@@ -48,7 +48,7 @@ function updateStats(){
  drawRanking(priced,best,baseline);
 }
 function numericQuote(v){if(String(v??'').trim()==='')return null;const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
-function currentPhoto(file,revision){return state.photoRevision===revision&&$('photo').files[0]===file}
+function currentPhoto(file,revision){return Boolean(file)&&state.photoRevision===revision&&$('photo').files?.[0]===file}
 function sourceChanged(previous,next){return previous!==null&&previous!==next}
 function baselineQuote(observations,entered){const current=numericQuote(entered);return current!==null?current:numericQuote(observations.quotes?.original??observations.originalCharge)}
 function quoteKey(){return'meesho-image-lab-observations-'+state.sourceKey}
