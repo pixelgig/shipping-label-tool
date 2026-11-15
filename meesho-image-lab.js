@@ -48,6 +48,7 @@ function updateStats(){
  drawRanking(priced,best,baseline);
 }
 function numericQuote(v){if(String(v??'').trim()==='')return null;const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
+function baselineQuote(observations,entered){const current=numericQuote(entered);return current!==null?current:numericQuote(observations.quotes?.original??observations.originalCharge)}
 function quoteKey(){return'meesho-image-lab-observations-'+state.sourceKey}
 function saveQuotes(){if(!state.sourceKey)return;const quotes=Object.fromEntries(state.items.filter(v=>v.quote!==null).map(v=>[v.key,v.quote]));try{localStorage.setItem(quoteKey(),JSON.stringify({originalCharge:$('originalCharge').value,category:$('category').value,sellingPrice:$('sellingPrice').value,quotes}))}catch(e){message('Quotes could not be stored locally: '+e.message)}}
 function loadQuotes(){try{return JSON.parse(localStorage.getItem(quoteKey())||'{}')}catch(e){return{}}}
@@ -72,7 +73,7 @@ async function generate(){if(state.busy)return;const file=$('photo').files[0];if
   const key=await hashFile(file);state.source=file;state.sourceImage=image;state.sourceKey=key;
   const observations=loadQuotes();if(observations.originalCharge!==undefined&&!$('originalCharge').value)$('originalCharge').value=observations.originalCharge;
   const box=cropRectangle(image),count=Number($('count').value)||24,settings=configs(count);
-  const src={index:0,name:'Original photo (baseline)',blob:file,url:urlFor(file),quote:numericQuote(observations.quotes?.['original']??observations.originalCharge),key:'original',detail:image.naturalWidth+' × '+image.naturalHeight+' original pixels'};
+  const src={index:0,name:'Original photo (baseline)',blob:file,url:urlFor(file),quote:baselineQuote(observations,$('originalCharge').value),key:'original',detail:image.naturalWidth+' × '+image.naturalHeight+' original pixels'};
   state.items.push(src);addCard(src);$('empty').classList.add('hidden');
   const canvas=document.createElement('canvas');
   for(let i=0;i<settings.length;i++){
