@@ -15,6 +15,12 @@ const portrait=evaluate('paint(testImage,testCanvas,testBox,configs(12)[0])');as
 assert.equal(evaluate("numericQuote('')"),null);assert.equal(evaluate("numericQuote('49.50')"),49.5);assert.equal(evaluate("numericQuote('x')"),null);
 assert(evaluate("escapeCsv('=IMPORTXML(1)')").startsWith('"\''));
 ctx.oldPhoto={name:'old.jpg'};ctx.newPhoto={name:'new.jpg'};
+
+assert.equal(evaluate('currentPhoto(null,0)'),false,'missing selected file is not current');
+evaluate('state.photoRevision=4');ctx.photoFile={name:'a.jpg'};node('photo').files=[ctx.photoFile];
+assert.equal(evaluate('currentPhoto(photoFile,4)'),true,'current selected photo and revision accepted');
+assert.equal(evaluate('currentPhoto(photoFile,3)'),false,'stale revision rejected');
+ctx.otherFile={name:'b.jpg'};assert.equal(evaluate('currentPhoto(otherFile,4)'),false,'stale file rejected');
 assert.equal(evaluate('sourceChanged(null,newPhoto)'),false,'initial photo selection keeps manually entered quote');
 assert.equal(evaluate('sourceChanged(oldPhoto,oldPhoto)'),false,'same file selection keeps baseline');
 assert.equal(evaluate('sourceChanged(oldPhoto,newPhoto)'),true,'different uploaded photo clears previous baseline');
