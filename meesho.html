@@ -103,7 +103,7 @@ function drawPreview(){drawBag();
  status('Preview ready. Cropped content '+(b.w/MM).toFixed(1)+' × '+(b.h/MM).toFixed(1)+' mm; printed '+g.w.toFixed(1)+' × '+g.h.toFixed(1)+' mm.');
  }catch(e){img.hidden=true;status(e.message)}
 }
-$('bag').onchange=()=>{placement=null;bagInfo();drawPreview()};bagInfo();window.addEventListener('resize',()=>drawBag());
+$('bag').onchange=()=>{placement=null;bagInfo();drawPreview()};bagInfo();drawBag();window.addEventListener('resize',()=>drawBag());
 for(const id of ['paper','fit','autocrop','cropLeft','cropRight','cropTop','cropBottom','cw','ch'])$(id).addEventListener('input',()=>{placement=null;drawPreview()});
 $('labelsize').onchange=()=>{$('customrow').hidden=$('labelsize').value!=='custom';placement=null;drawPreview()};
 $('resetLayout').onclick=()=>{placement=null;drawPreview()};
