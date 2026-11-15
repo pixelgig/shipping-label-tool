@@ -3,7 +3,7 @@
 <title>Meesho Bag Label Studio</title>
 <style>
 :root{font-family:system-ui,Arial,sans-serif;color:#183047;background:#f2f5f9}*{box-sizing:border-box}body{margin:0}header{background:#152c44;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}header a{color:#bde5ff}h1{font-size:20px;margin:0}main{max-width:1250px;margin:auto;padding:20px;display:grid;grid-template-columns:340px 1fr;gap:20px}.card{background:#fff;border:1px solid #d9e2ed;border-radius:12px;padding:20px;box-shadow:0 3px 12px #17324c12}h2{font-size:17px;margin:0 0 14px}label{display:block;font-weight:650;font-size:13px;margin:15px 0 6px}select,input,button{font:inherit}select,input[type=number],input[type=file]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px}button{background:#087ac8;color:#fff;border:0;border-radius:8px;padding:12px 16px;cursor:pointer;font-weight:650;width:100%;margin-top:14px}button:disabled{opacity:.5;cursor:wait}.muted{color:#62748a;font-size:12px;line-height:1.6}.preview{background:#dce4ee;padding:24px;border-radius:10px;overflow:auto}.page{width:min(100%,570px);aspect-ratio:210/297;background:#fff;box-shadow:0 5px 24px #1a334433;margin:auto;position:relative}.page img{position:absolute;object-fit:fill;border:1px solid #cbd5e1}.page .placeholder{position:absolute;inset:20%;border:2px dashed #d0dce9;display:grid;place-items:center;text-align:center;color:#8b9baa;padding:15px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.note{border-left:3px solid #087ac8;background:#eff8ff;padding:10px;font-size:12px;line-height:1.6;margin-top:15px}.stat{margin-top:12px;color:#405c70;font-size:13px}@media(max-width:800px){main{grid-template-columns:1fr;padding:12px}.preview{padding:10px}}
-</style></head><body>
+ .bagstage{background:#dce4ee;border-radius:10px;padding:20px;display:flex;justify-content:center;overflow:auto}.bagshape{position:relative;background:#fffef9;border:2px solid #8d9db0;box-shadow:0 4px 18px #17324c33;touch-action:none;max-width:100%}.safezone{position:absolute;border:2px dashed #0e9a70;background:#0e9a7010;pointer-events:none}.baglabel{position:absolute;border:2px solid #087ac8;background:#fff;cursor:grab;touch-action:none;user-select:none;box-shadow:0 2px 8px #0002}.baglabel:active{cursor:grabbing}.baglabel img{width:100%;height:100%;pointer-events:none;display:block}.resizehandle{position:absolute;right:-8px;bottom:-8px;background:#087ac8;border:2px solid white;width:19px;height:19px;border-radius:5px;cursor:nwse-resize;touch-action:none}.bagcaption{position:absolute;top:4px;left:7px;color:#526779;font-size:10px;pointer-events:none}.dimension{font-size:13px;color:#35536a;margin:10px 0}.baglabel:focus-visible{outline:3px solid #ed9c21} </style></head><body>
 <header><h1>Meesho Packaging & Label Print Studio</h1><nav><a href="editor.html">Visual A4 editor</a> · <a href="legacy.html">Original layout</a></nav></header>
 <main><section class="card"><h2>Prepare shipping labels</h2>
 <label for="files">1. Upload shipping-label PDFs</label><input id="files" type="file" accept=".pdf,application/pdf" multiple><p class="muted">Multiple files and multi-page PDFs supported. Files stay in your browser.</p>
@@ -13,8 +13,8 @@
 <div class="row" id="customrow" hidden><div><label for="cw">Width (mm)</label><input id="cw" type="number" min="10" max="210" value="100"></div><div><label for="ch">Height (mm)</label><input id="ch" type="number" min="10" max="297" value="150"></div></div>
 <label><input type="checkbox" id="autocrop" checked> Automatically remove blank PDF margins</label><div class="note">Auto-crop detects visible ink on every PDF page, with a small safety margin. If anything important is trimmed, turn it off or adjust the manual crop below.</div><details><summary>Manual crop adjustments (mm)</summary><div class="row"><div><label for="cropLeft">Left</label><input type="number" id="cropLeft" value="0" min="0" step="1"></div><div><label for="cropRight">Right</label><input type="number" id="cropRight" value="0" min="0" step="1"></div><div><label for="cropTop">Top</label><input type="number" id="cropTop" value="0" min="0" step="1"></div><div><label for="cropBottom">Bottom</label><input type="number" id="cropBottom" value="0" min="0" step="1"></div></div><p class="muted">Extra trimming after auto-crop, or from the original PDF when auto-crop is off. Positive values trim inward.</p></details><label for="fit">Barcode-safe scaling</label><select id="fit"><option value="contain">Preserve proportions (recommended)</option><option value="stretch">Stretch to selected size (not recommended)</option></select>
 <button id="export" disabled>Download print-ready PDF</button><div id="status" class="stat" role="status">Choose PDFs to begin.</div>
-<div class="note">Auto-fit keeps the printed label smaller than the selected bag, with at least 0.5 inch clearance on each side. Labels are centered on printer paper. Bag measurements vary by supplier; check the usable flat area and barcode readability before dispatch.</div>
-</section><section class="card"><h2>A4/Letter print preview</h2><div class="preview"><div class="page" id="page"><div class="placeholder" id="placeholder">Upload a shipping label to preview it here.</div><img id="preview" alt="First shipping label preview" hidden></div></div><p class="muted">Preview shows the first PDF page after crop. Download includes every page from all uploaded PDFs, one shipping label per printed sheet. Print at actual size / 100%.</p></section></main>
+<div class="note">Auto-fit keeps the printed label smaller than the selected bag, with at least 1 inch clearance on the left and right and 2 inches at the top and bottom. Labels are centered on printer paper. Bag measurements vary by supplier; check the usable flat area and barcode readability before dispatch.</div>
+</section><section class="card"><h2>Courier bag size overlay · drag and resize</h2><p class="muted">Proportional bag outline, green safe area, blue shipping label. Drag the label or its blue bottom-right handle. Changes apply to all uploaded label pages.</p><div class="bagstage"><div class="bagshape" id="bagshape"><span class="bagcaption" id="bagcaption"></span><div class="safezone" id="safezone"></div><div class="baglabel" id="baglabel" tabindex="0" aria-label="Drag label or resize from bottom-right handle"><img id="bagimage" alt="Shipping label on courier bag"><div class="resizehandle" id="resizehandle"></div></div></div></div><div class="dimension" id="dimension"></div><button id="resetLayout" type="button">Reset label to automatic fit</button><h2 style="margin-top:22px">A4/Letter print preview</h2><div class="preview"><div class="page" id="page"><div class="placeholder" id="placeholder">Upload a shipping label to preview it here.</div><img id="preview" alt="First shipping label preview" hidden></div></div><p class="muted">Preview shows the first PDF page after crop. Download includes every page from all uploaded PDFs, one shipping label per printed sheet. Print at actual size / 100%.</p></section></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
@@ -39,10 +39,11 @@ const bags=[
 ['14 × 24',14,24,'Long parcels','TKM']
 ];
 $('bag').replaceChildren(...bags.map((b,i)=>{const o=document.createElement('option');o.value=i;o.textContent=b[0]+' inches'+(b[4]?' · '+b[4]:'');return o}));
-let docs=[],first=null,busy=false;
+let docs=[],first=null,busy=false,placement=null;
 if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 function status(t){$('status').textContent=t}
 function paperMM(){return $('paper').value==='letter'?[215.9,279.4]:[210,297]}
+function safeBounds(){const b=bags[Number($('bag').value)];return{x:25.4,y:50.8,w:Math.max(0,(b[1]-2)*25.4),h:Math.max(0,(b[2]-4)*25.4),bw:b[1]*25.4,bh:b[2]*25.4}}
 function bagInfo(){const b=bags[Number($('bag').value)];$('baginfo').textContent=b[3]+'. Bag '+b[0]+' in ('+(b[1]*25.4).toFixed(1)+' × '+(b[2]*25.4).toFixed(1)+' mm).'+(b[4]?' Code: '+b[4]+'.':'')}
 function manualCrop(){return ['cropLeft','cropRight','cropTop','cropBottom'].map(id=>{const n=Number($(id).value);return Number.isFinite(n)&&n>=0?n*MM:0})}
 function cropBox(info){
@@ -55,7 +56,7 @@ function labelMM(){const s=$('labelsize').value;if(s==='4x6')return[101.6,152.4]
 function geometry(srcW,srcH){
  const [pw,ph]=paperMM(),b=bags[Number($('bag').value)];
  // Reserve half an inch on each bag edge for sealing, folds and positioning.
- const bagW=(b[1]-1)*25.4,bagH=(b[2]-1)*25.4;
+ const bagW=(b[1]-2)*25.4,bagH=(b[2]-4)*25.4;
  let target=labelMM();
  if($('labelsize').value==='bag')target=[Math.min(bagW,pw-10),Math.min(bagH,ph-10)];
  if(!target)target=[srcW/MM,srcH/MM];
@@ -65,7 +66,7 @@ function geometry(srcW,srcH){
  const limit=Math.min(1,maxW/w,maxH/h);w*=limit;h*=limit;
  if($('fit').value==='contain'){const scale=Math.min(w/(srcW/MM),h/(srcH/MM));w=srcW/MM*scale;h=srcH/MM*scale}
  if(w<10||h<10)throw Error('Label is too small for reliable printing. Select a larger bag or paper.');
- return{pw,ph,w,h,x:(pw-w)/2,y:(ph-h)/2};
+ if(placement){w=placement.w;h=placement.h}return{pw,ph,w,h,x:(pw-w)/2,y:(ph-h)/2};
 }
 function detectInk(canvas){
  const ctx=canvas.getContext('2d',{willReadFrequently:true}),w=canvas.width,h=canvas.height;
@@ -94,7 +95,8 @@ function previewImage(info){
  const sw=Math.min(src.width-sx,Math.max(1,Math.ceil(b.w/info.w*src.width))),sh=Math.min(src.height-sy,Math.max(1,Math.ceil(b.h/info.h*src.height)));
  c.width=sw;c.height=sh;c.getContext('2d').drawImage(src,sx,sy,sw,sh,0,0,sw,sh);return c.toDataURL('image/png');
 }
-function drawPreview(){
+function drawBag(){const bounds=safeBounds(),shape=$('bagshape'),safe=$('safezone'),label=$('baglabel');const px=Math.min(490/bounds.bw,520/bounds.bh);shape.style.width=bounds.bw*px+'px';shape.style.height=bounds.bh*px+'px';$('bagcaption').textContent=bags[Number($('bag').value)][0]+' in bag';safe.style.left=bounds.x*px+'px';safe.style.top=bounds.y*px+'px';safe.style.width=bounds.w*px+'px';safe.style.height=bounds.h*px+'px';if(first&&!placement){try{const b=cropBox(first),g=geometry(b.w,b.h);placement={x:bounds.x+(bounds.w-g.w)/2,y:bounds.y+(bounds.h-g.h)/2,w:g.w,h:g.h}}catch(e){status(e.message)}}if(placement){placement.w=Math.min(placement.w,bounds.w);placement.h=Math.min(placement.h,bounds.h);placement.x=Math.max(bounds.x,Math.min(placement.x,bounds.x+bounds.w-placement.w));placement.y=Math.max(bounds.y,Math.min(placement.y,bounds.y+bounds.h-placement.h));label.style.left=placement.x*px+'px';label.style.top=placement.y*px+'px';label.style.width=placement.w*px+'px';label.style.height=placement.h*px+'px';label.hidden=false;if(first)$('bagimage').src=previewImage(first);$('dimension').textContent='Label: '+placement.w.toFixed(1)+' × '+placement.h.toFixed(1)+' mm · Bag: '+bounds.bw.toFixed(1)+' × '+bounds.bh.toFixed(1)+' mm · Safe area: '+bounds.w.toFixed(1)+' × '+bounds.h.toFixed(1)+' mm'}else{label.hidden=true;$('dimension').textContent='Upload a label to see its size relative to the selected bag.'}}
+function drawPreview(){drawBag();
  const p=$('page'),img=$('preview'),[pw,ph]=paperMM();p.style.aspectRatio=pw+'/'+ph;
  if(!first)return;
  try{const b=cropBox(first),g=geometry(b.w,b.h);
@@ -103,11 +105,13 @@ function drawPreview(){
  status('Preview ready. Cropped content '+(b.w/MM).toFixed(1)+' × '+(b.h/MM).toFixed(1)+' mm; printed '+g.w.toFixed(1)+' × '+g.h.toFixed(1)+' mm.');
  }catch(e){img.hidden=true;status(e.message)}
 }
-$('bag').onchange=()=>{bagInfo();drawPreview()};bagInfo();
-for(const id of ['paper','fit','autocrop','cropLeft','cropRight','cropTop','cropBottom','cw','ch'])$(id).addEventListener('input',drawPreview);
-$('labelsize').onchange=()=>{$('customrow').hidden=$('labelsize').value!=='custom';drawPreview()};
+$('bag').onchange=()=>{placement=null;bagInfo();drawPreview()};bagInfo();
+for(const id of ['paper','fit','autocrop','cropLeft','cropRight','cropTop','cropBottom','cw','ch'])$(id).addEventListener('input',()=>{placement=null;drawPreview()});
+$('labelsize').onchange=()=>{$('customrow').hidden=$('labelsize').value!=='custom';placement=null;drawPreview()};
+$('resetLayout').onclick=()=>{placement=null;drawPreview()};
+$('baglabel').addEventListener('pointerdown',e=>{if(!placement)return;e.preventDefault();const label=$('baglabel'),resize=e.target===$('resizehandle'),bounds=safeBounds(),rect=$('bagshape').getBoundingClientRect(),scale=rect.width/bounds.bw,start={...placement},sx=e.clientX,sy=e.clientY;label.setPointerCapture(e.pointerId);const move=ev=>{const dx=(ev.clientX-sx)/scale,dy=(ev.clientY-sy)/scale;if(resize){const ratio=start.w/start.h;let w=Math.max(10,Math.min(start.w+dx,bounds.x+bounds.w-start.x));let h=w/ratio;if(h>bounds.y+bounds.h-start.y){h=bounds.y+bounds.h-start.y;w=h*ratio}placement={...start,w,h}}else{placement.x=Math.max(bounds.x,Math.min(start.x+dx,bounds.x+bounds.w-start.w));placement.y=Math.max(bounds.y,Math.min(start.y+dy,bounds.y+bounds.h-start.h))}drawPreview()};const end=()=>{label.removeEventListener('pointermove',move);label.removeEventListener('pointerup',end);label.removeEventListener('pointercancel',end)};label.addEventListener('pointermove',move);label.addEventListener('pointerup',end);label.addEventListener('pointercancel',end)});
 $('files').onchange=async()=>{
- if(busy)return;busy=true;docs=[];first=null;$('preview').hidden=true;$('placeholder').hidden=false;$('export').disabled=true;
+ if(busy)return;busy=true;docs=[];first=null;placement=null;$('preview').hidden=true;$('placeholder').hidden=false;$('export').disabled=true;
  const files=[...$('files').files];if(!files.length){busy=false;return}
  if(!window.pdfjsLib||!window.PDFLib){status('PDF libraries unavailable. Check your connection.');busy=false;return}
  let count=0,failures=[];
