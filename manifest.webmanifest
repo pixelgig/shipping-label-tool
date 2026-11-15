@@ -1,0 +1,18 @@
+{
+  "name": "Shipping Label Studio — Courier Bag & A4 Print",
+  "short_name": "Label Studio",
+  "description": "Privacy-first offline shipping-label and courier bag printing tools",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f8fd",
+  "theme_color": "#5268e9",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
