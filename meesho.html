@@ -136,7 +136,7 @@ $('export').onclick=async()=>{
  count++;
  }}
  const bytes=await out.save(),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');
- a.href=url;a.download='meesho-cropped-labels.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ a.href=url;a.download='courier-bag-labels.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
  status('Downloaded '+count+' cropped, print-ready label page(s). Print at actual size / 100%.');
  }catch(e){console.error(e);status('Export failed: '+e.message)}finally{busy=false;$('export').disabled=false}
 };
