@@ -10,10 +10,10 @@ function escapeCsv(v){let s=String(v??'');if(/^[\s]*[=+@\-]/.test(s))s="'"+s;ret
 function download(blob,filename){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}
 function cleanup(){for(const item of state.items)URL.revokeObjectURL(item.url);state.items=[];$('gallery').replaceChildren();$('rankings').replaceChildren();$('empty').classList.remove('hidden');$('downloadCSV').disabled=true;$('downloadZip').disabled=true;updateStats()}
 function readImage(file){return new Promise((resolve,reject)=>{const u=urlFor(file),image=new Image();image.onload=()=>{URL.revokeObjectURL(u);resolve(image)};image.onerror=()=>{URL.revokeObjectURL(u);reject(Error('Image could not be decoded. Try JPG or PNG.'))};image.src=u})}
-function paint(image,canvas,box,cfg){const context=canvas.getContext('2d',{alpha:false});const size=cfg.size;canvas.width=size;canvas.height=size;context.fillStyle=cfg.background;context.fillRect(0,0,size,size);
- const room=size*(1-2*cfg.padding),scale=Math.min(room/box.w,room/box.h);
+function paint(image,canvas,box,cfg){const context=canvas.getContext('2d',{alpha:false});const size=cfg.size;const heightSize=cfg.height||size;canvas.width=size;canvas.height=heightSize;context.fillStyle=cfg.background;context.fillRect(0,0,size,heightSize);
+ const heightSize=cfg.height||size;const roomW=size*(1-2*cfg.padding),roomH=heightSize*(1-2*cfg.padding),scale=Math.min(roomW/box.w,roomH/box.h);
  const width=box.w*scale,height=box.h*scale;
- const dx=(size-width)/2 + cfg.shiftX*(size*0.01),dy=(size-height)/2+cfg.shiftY*(size*0.01);
+ const dx=(size-width)/2 + cfg.shiftX*(size*0.01),dy=(heightSize-height)/2+cfg.shiftY*(heightSize*0.01);
  context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';
  context.drawImage(image,box.x,box.y,box.w,box.h,dx,dy,width,height);
  return{scaledWidth:Math.round(width),scaledHeight:Math.round(height)}}
@@ -31,9 +31,9 @@ function cropRectangle(image){const w=image.naturalWidth,h=image.naturalHeight;i
  return{x:Math.round(left/scale),y:Math.round(top/scale),w:Math.min(w-Math.round(left/scale),Math.max(1,Math.round((right-left)/scale))),h:Math.min(h-Math.round(top/scale),Math.max(1,Math.round((bottom-top)/scale)))}}
 function configs(count){const backgroundFamily=$('background').value;
  const options=[],backgrounds=backgroundFamily==='all'?Object.values(BACKGROUNDS):[BACKGROUNDS.white,BACKGROUNDS.soft];
- const sizes=$('square').checked?[1000,1024,1200]:[1000,1024,1200];
+ const sizes=[1000,1024,1200];const square=$('square').checked;
  // Deterministic, independently implemented exploration of conservative catalog-safe framing.
- for(let i=0;i<count;i++){const pad=[.035,.07,.11,.16][i%4],size=sizes[Math.floor(i/4)%sizes.length],bg=backgrounds[Math.floor(i/12)%backgrounds.length],shiftX=[0,-1.3,1.3][Math.floor(i/3)%3],shiftY=[0,-1.1,1.1][Math.floor(i/9)%3],quality=[.86,.92,.96][Math.floor(i/4)%3];options.push({padding:pad,size,background:bg,shiftX,shiftY,quality})}
+ for(let i=0;i<count;i++){const pad=[.035,.07,.11,.16][i%4],size=sizes[Math.floor(i/4)%sizes.length],bg=backgrounds[Math.floor(i/12)%backgrounds.length],shiftX=[0,-1.3,1.3][Math.floor(i/3)%3],shiftY=[0,-1.1,1.1][Math.floor(i/9)%3],quality=[.86,.92,.96][Math.floor(i/4)%3];options.push({padding:pad,size,height:square?size:Math.round(size*1.25),background:bg,shiftX,shiftY,quality})}
  return options}
 function filename(item){return item.index===0?'meesho-original-'+item.key+'.'+(item.blob.type.includes('png')?'png':item.blob.type.includes('webp')?'webp':'jpg'):'meesho-variant-'+String(item.index).padStart(2,'0')+'-'+item.key+'.jpg'}
 function updateStats(){
@@ -77,7 +77,7 @@ async function generate(){if(state.busy)return;const file=$('photo').files[0];if
   const canvas=document.createElement('canvas');
   for(let i=0;i<settings.length;i++){
    const cfg=settings[i];const geometry=paint(image,canvas,box,cfg);const blob=await toJpeg(canvas,cfg.quality);
-   const item={index:i+1,name:'Variant '+String(i+1).padStart(2,'0'),blob,url:urlFor(blob),key:'v'+String(i+1).padStart(2,'0'),quote:numericQuote(observations.quotes?.['v'+String(i+1).padStart(2,'0')]),detail:cfg.size+' px · '+Math.round(cfg.padding*100)+'% frame · '+geometry.scaledWidth+'×'+geometry.scaledHeight+' image'};
+   const item={index:i+1,name:'Variant '+String(i+1).padStart(2,'0'),blob,url:urlFor(blob),key:'v'+String(i+1).padStart(2,'0'),quote:numericQuote(observations.quotes?.['v'+String(i+1).padStart(2,'0')]),detail:cfg.size+'×'+cfg.height+' px · '+Math.round(cfg.padding*100)+'% frame · '+geometry.scaledWidth+'×'+geometry.scaledHeight+' image'};
    state.items.push(item);addCard(item);$('progressBar').style.width=Math.round((i+1)/count*100)+'%';message('Generated '+(i+1)+' / '+count+' variants…');
    if(i%3===0)await tick();
   }
