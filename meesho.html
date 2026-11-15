@@ -9,30 +9,133 @@
 <label for="files">1. Upload shipping-label PDFs</label><input id="files" type="file" accept=".pdf,application/pdf" multiple><p class="muted">Multiple files and multi-page PDFs supported. Files stay in your browser.</p>
 <label for="bag">2. Select courier bag size</label><select id="bag"></select><p id="baginfo" class="muted"></p>
 <label for="paper">3. Printing paper</label><select id="paper"><option value="a4">A4 (210 × 297 mm)</option><option value="letter">US Letter (8.5 × 11 in)</option></select>
-<label for="labelsize">4. Printed shipping-label size</label><select id="labelsize"><option value="4x6">4 × 6 inches (standard label)</option><option value="3x4">3 × 4 inches (compact)</option><option value="original">Original PDF size (fit to paper)</option><option value="custom">Custom dimensions</option></select>
+<label for="labelsize">4. Printed shipping-label size</label><select id="labelsize"><option value="bag">Auto-fit to selected bag (recommended)</option><option value="4x6">4 × 6 inches (standard label)</option><option value="3x4">3 × 4 inches (compact)</option><option value="original">Original PDF size (fit to paper)</option><option value="custom">Custom dimensions</option></select>
 <div class="row" id="customrow" hidden><div><label for="cw">Width (mm)</label><input id="cw" type="number" min="10" max="210" value="100"></div><div><label for="ch">Height (mm)</label><input id="ch" type="number" min="10" max="297" value="150"></div></div>
-<label for="fit">Barcode-safe scaling</label><select id="fit"><option value="contain">Preserve proportions (recommended)</option><option value="stretch">Stretch to selected size (not recommended)</option></select>
+<label><input type="checkbox" id="autocrop" checked> Automatically remove blank PDF margins</label><div class="note">Auto-crop detects visible ink on every PDF page, with a small safety margin. If anything important is trimmed, turn it off or adjust the manual crop below.</div><details><summary>Manual crop adjustments (mm)</summary><div class="row"><div><label for="cropLeft">Left</label><input type="number" id="cropLeft" value="0" min="0" step="1"></div><div><label for="cropRight">Right</label><input type="number" id="cropRight" value="0" min="0" step="1"></div><div><label for="cropTop">Top</label><input type="number" id="cropTop" value="0" min="0" step="1"></div><div><label for="cropBottom">Bottom</label><input type="number" id="cropBottom" value="0" min="0" step="1"></div></div><p class="muted">Extra trimming after auto-crop, or from the original PDF when auto-crop is off. Positive values trim inward.</p></details><label for="fit">Barcode-safe scaling</label><select id="fit"><option value="contain">Preserve proportions (recommended)</option><option value="stretch">Stretch to selected size (not recommended)</option></select>
 <button id="export" disabled>Download print-ready PDF</button><div id="status" class="stat" role="status">Choose PDFs to begin.</div>
-<div class="note">Bag size is a packaging reference, not a paper or label size. The selected label size is printed on the chosen paper, centered with its aspect ratio preserved by default. Verify the barcode is readable before dispatch.</div>
-</section><section class="card"><h2>A4/Letter print preview</h2><div class="preview"><div class="page" id="page"><div class="placeholder" id="placeholder">Upload a shipping label to preview it here.</div><img id="preview" alt="First shipping label preview" hidden></div></div><p class="muted">Preview shows the first PDF page. Download includes every page from all uploaded PDFs, one shipping label per printed sheet. Print at actual size / 100%.</p></section></main>
+<div class="note">Auto-fit keeps the printed label smaller than the selected bag, with at least 0.5 inch clearance on each side. Labels are centered on printer paper. Bag measurements vary by supplier; check the usable flat area and barcode readability before dispatch.</div>
+</section><section class="card"><h2>A4/Letter print preview</h2><div class="preview"><div class="page" id="page"><div class="placeholder" id="placeholder">Upload a shipping label to preview it here.</div><img id="preview" alt="First shipping label preview" hidden></div></div><p class="muted">Preview shows the first PDF page after crop. Download includes every page from all uploaded PDFs, one shipping label per printed sheet. Print at actual size / 100%.</p></section></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
 'use strict';
-const $=id=>document.getElementById(id);
-const bags=[['6 × 8',6,8],['6.5 × 8',6.5,8],['8 × 10',8,10],['8 × 12',8,12],['9 × 12',9,12],['10 × 12',10,12],['10 × 14',10,14],['12 × 14',12,14],['12 × 16',12,16],['12.5 × 16',12.5,16],['14 × 18',14,18],['16 × 20',16,20],['18 × 22',18,22],['20 × 24',20,24]];
-$('bag').innerHTML=bags.map((b,i)=>'<option value="'+i+'">'+b[0]+' inches</option>').join('');
-let docs=[],firstPreview=null;
+const $=id=>document.getElementById(id), MM=72/25.4;
+const bags=[
+['6 × 8',6,8,'Small jewelry and accessories',''],
+['6.5 × 8',6.5,8,'Small accessories','TK1 / MSB1'],
+['8 × 10',8,10,'Single t-shirt or kurti','TK2 / MB2'],
+['8 × 12',8,12,'Light garments and textiles','TK3'],
+['9 × 12',9,12,'Documents, books, flat goods','TKA'],
+['10 × 12',10,12,'Medium clothing sets',''],
+['10 × 13',10,13,'Standard courier packets','TK0'],
+['10 × 14',10,14,'Sarees and clothing sets','TK5 / TKG'],
+['12 × 14',12,14,'Bulky clothing','TK6'],
+['12.5 × 16',12.5,16,'Apparel bundles and jackets','TK7'],
+['14 × 18',14,18,'Bedsheets and larger orders','TK8 / SB7 / MB7'],
+['16 × 20',16,20,'Bulky winter wear','TK9 / SB7 / MB7'],
+['18 × 22',18,22,'Extra-large parcels','TKB'],
+['20 × 23',20,23,'Extra-large parcels','TKC'],
+['22 × 24',22,24,'Extra-large parcels','TKD'],
+['14 × 24',14,24,'Long parcels','TKM']
+];
+$('bag').replaceChildren(...bags.map((b,i)=>{const o=document.createElement('option');o.value=i;o.textContent=b[0]+' inches'+(b[4]?' · '+b[4]:'');return o}));
+let docs=[],first=null,busy=false;
 if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 function status(t){$('status').textContent=t}
 function paperMM(){return $('paper').value==='letter'?[215.9,279.4]:[210,297]}
+function bagInfo(){const b=bags[Number($('bag').value)];$('baginfo').textContent=b[3]+'. Bag '+b[0]+' in ('+(b[1]*25.4).toFixed(1)+' × '+(b[2]*25.4).toFixed(1)+' mm).'+(b[4]?' Code: '+b[4]+'.':'')}
+function manualCrop(){return ['cropLeft','cropRight','cropTop','cropBottom'].map(id=>{const n=Number($(id).value);return Number.isFinite(n)&&n>=0?n*MM:0})}
+function cropBox(info){
+ const w=info.w,h=info.h,b=$('autocrop').checked?info.auto:{x:0,y:0,w,h};
+ const [l,r,t,bt]=manualCrop();const x=b.x+l,y=b.y+t,cw=b.w-l-r,ch=b.h-t-bt;
+ if(cw<=8||ch<=8)throw Error('Crop removes too much content. Reduce manual crop margins.');
+ return{x,y,w:cw,h:ch};
+}
 function labelMM(){const s=$('labelsize').value;if(s==='4x6')return[101.6,152.4];if(s==='3x4')return[76.2,101.6];if(s==='custom')return[Number($('cw').value),Number($('ch').value)];return null}
-function bagInfo(){const b=bags[Number($('bag').value)];$('baginfo').textContent='Selected packaging: '+b[0]+' in ('+(b[1]*25.4).toFixed(1)+' × '+(b[2]*25.4).toFixed(1)+' mm). This does not resize your label.'}
-$('bag').onchange=bagInfo;bagInfo();
+function geometry(srcW,srcH){
+ const [pw,ph]=paperMM(),b=bags[Number($('bag').value)];
+ // Reserve half an inch on each bag edge for sealing, folds and positioning.
+ const bagW=(b[1]-1)*25.4,bagH=(b[2]-1)*25.4;
+ let target=labelMM();
+ if($('labelsize').value==='bag')target=[Math.min(bagW,pw-10),Math.min(bagH,ph-10)];
+ if(!target)target=[srcW/MM,srcH/MM];
+ let [w,h]=target;
+ if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)throw Error('Enter valid label dimensions.');
+ const maxW=Math.min(bagW,pw-10),maxH=Math.min(bagH,ph-10);
+ const limit=Math.min(1,maxW/w,maxH/h);w*=limit;h*=limit;
+ if($('fit').value==='contain'){const scale=Math.min(w/(srcW/MM),h/(srcH/MM));w=srcW/MM*scale;h=srcH/MM*scale}
+ if(w<10||h<10)throw Error('Label is too small for reliable printing. Select a larger bag or paper.');
+ return{pw,ph,w,h,x:(pw-w)/2,y:(ph-h)/2};
+}
+function detectInk(canvas){
+ const ctx=canvas.getContext('2d',{willReadFrequently:true}),w=canvas.width,h=canvas.height;
+ const d=ctx.getImageData(0,0,w,h).data;let left=w,top=h,right=-1,bottom=-1;
+ // Ignore very faint background noise while retaining text, QR codes and borders.
+ for(let y=0;y<h;y+=1)for(let x=0;x<w;x+=1){const k=(y*w+x)*4;
+ if(d[k+3]>32&&Math.min(d[k],d[k+1],d[k+2])<225){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}}
+ if(right<left)return{x:0,y:0,w,h};
+ const pad=Math.max(4,Math.round(Math.min(w,h)*0.012));
+ left=Math.max(0,left-pad);top=Math.max(0,top-pad);right=Math.min(w,right+pad+1);bottom=Math.min(h,bottom+pad+1);
+ return{x:left,y:top,w:right-left,h:bottom-top};
+}
+async function analyzePage(pdfPage,sourcePage){
+ const view=pdfPage.getViewport({scale:1}),scale=Math.min(2,1400/Math.max(view.width,view.height)),vp=pdfPage.getViewport({scale});
+ const canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);
+ await pdfPage.render({canvasContext:ctx,viewport:vp}).promise;
+ const ink=detectInk(canvas),w=sourcePage.getWidth(),h=sourcePage.getHeight();
+ // PDF coordinates use bottom-left; PDF.js pixels use top-left.
+ const auto={x:ink.x/canvas.width*w,y:ink.y/canvas.height*h,w:ink.w/canvas.width*w,h:ink.h/canvas.height*h};
+ return{w,h,auto,canvas};
+}
+function previewImage(info){
+ const b=cropBox(info),src=info.canvas,c=document.createElement('canvas');
+ const sx=Math.max(0,Math.floor(b.x/info.w*src.width)),sy=Math.max(0,Math.floor(b.y/info.h*src.height));
+ const sw=Math.min(src.width-sx,Math.max(1,Math.ceil(b.w/info.w*src.width))),sh=Math.min(src.height-sy,Math.max(1,Math.ceil(b.h/info.h*src.height)));
+ c.width=sw;c.height=sh;c.getContext('2d').drawImage(src,sx,sy,sw,sh,0,0,sw,sh);return c.toDataURL('image/png');
+}
+function drawPreview(){
+ const p=$('page'),img=$('preview'),[pw,ph]=paperMM();p.style.aspectRatio=pw+'/'+ph;
+ if(!first)return;
+ try{const b=cropBox(first),g=geometry(b.w,b.h);
+ img.style.left=g.x/g.pw*100+'%';img.style.top=g.y/g.ph*100+'%';img.style.width=g.w/g.pw*100+'%';img.style.height=g.h/g.ph*100+'%';
+ img.src=previewImage(first);img.hidden=false;$('placeholder').hidden=true;
+ status('Preview ready. Cropped content '+(b.w/MM).toFixed(1)+' × '+(b.h/MM).toFixed(1)+' mm; printed '+g.w.toFixed(1)+' × '+g.h.toFixed(1)+' mm.');
+ }catch(e){img.hidden=true;status(e.message)}
+}
+$('bag').onchange=()=>{bagInfo();drawPreview()};bagInfo();
+for(const id of ['paper','fit','autocrop','cropLeft','cropRight','cropTop','cropBottom','cw','ch'])$(id).addEventListener('input',drawPreview);
 $('labelsize').onchange=()=>{$('customrow').hidden=$('labelsize').value!=='custom';drawPreview()};
-$('paper').onchange=drawPreview;$('fit').onchange=drawPreview;$('cw').oninput=drawPreview;$('ch').oninput=drawPreview;
-function geometry(srcW,srcH){const [pw,ph]=paperMM();let target=labelMM();if(!target)target=[srcW*25.4/72,srcH*25.4/72];let [w,h]=target;if(!Number.isFinite(w)||!Number.isFinite(h)||w<10||h<10||w>pw||h>ph)throw Error('Label dimensions must fit within the selected paper.');if($('fit').value==='contain'){const ratio=Math.min(w/(srcW*25.4/72),h/(srcH*25.4/72));w=srcW*25.4/72*ratio;h=srcH*25.4/72*ratio}return{pw,ph,w,h,x:(pw-w)/2,y:(ph-h)/2}}
-function drawPreview(){const p=$('page'),img=$('preview');const [pw,ph]=paperMM();p.style.aspectRatio=pw+'/'+ph;if(!firstPreview)return;try{const g=geometry(firstPreview.w,firstPreview.h);img.style.left=g.x/g.pw*100+'%';img.style.top=g.y/g.ph*100+'%';img.style.width=g.w/g.pw*100+'%';img.style.height=g.h/g.ph*100+'%';img.src=firstPreview.url;img.hidden=false;$('placeholder').hidden=true}catch(e){status(e.message);img.hidden=true}}
-$('files').onchange=async()=>{docs=[];firstPreview=null;$('preview').hidden=true;$('placeholder').hidden=false;$('export').disabled=true;const files=[...$('files').files];if(!files.length)return;if(!window.pdfjsLib||!window.PDFLib){status('PDF libraries could not load. Check your internet connection.');return}let pages=0;for(const file of files){try{const bytes=new Uint8Array(await file.arrayBuffer());const pdf=await PDFLib.PDFDocument.load(bytes);const rendered=await pdfjsLib.getDocument({data:bytes.slice()}).promise;docs.push({name:file.name,bytes,pdf});pages+=pdf.getPageCount();if(!firstPreview){const p=await rendered.getPage(1),v=p.getViewport({scale:1}),scale=Math.min(2,1200/Math.max(v.width,v.height)),vp=p.getViewport({scale}),c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);await p.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;firstPreview={url:c.toDataURL('image/png'),w:pdf.getPage(0).getWidth(),h:pdf.getPage(0).getHeight()}}}catch(e){status('Skipped '+file.name+': '+e.message)}}if(docs.length){$('export').disabled=false;drawPreview();status('Ready: '+docs.length+' PDF file(s), '+pages+' label page(s).')}else status('No readable PDF files were loaded.')};
-$('export').onclick=async()=>{if(!docs.length)return;$('export').disabled=true;try{const output=await PDFLib.PDFDocument.create(),mm=72/25.4;for(const doc of docs){const embedded=await output.embedPdf(doc.bytes);for(const page of embedded){const g=geometry(page.width,page.height),out=output.addPage([g.pw*mm,g.ph*mm]);out.drawPage(page,{x:g.x*mm,y:(g.ph-g.y-g.h)*mm,width:g.w*mm,height:g.h*mm})}}const bytes=await output.save(),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download='meesho-shipping-labels-print.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);status('Downloaded '+output.getPageCount()+' print-ready page(s). Print at 100%.')}catch(e){console.error(e);status('Export failed: '+e.message)}finally{$('export').disabled=false}};
+$('files').onchange=async()=>{
+ if(busy)return;busy=true;docs=[];first=null;$('preview').hidden=true;$('placeholder').hidden=false;$('export').disabled=true;
+ const files=[...$('files').files];if(!files.length){busy=false;return}
+ if(!window.pdfjsLib||!window.PDFLib){status('PDF libraries unavailable. Check your connection.');busy=false;return}
+ let count=0,failures=[];
+ try{for(const file of files){try{
+ const bytes=new Uint8Array(await file.arrayBuffer()),pdf=await PDFLib.PDFDocument.load(bytes),rendered=await pdfjsLib.getDocument({data:bytes.slice()}).promise;
+ const infos=[];for(let i=0;i<pdf.getPageCount();i++){status('Analyzing '+file.name+' page '+(i+1)+'…');const info=await analyzePage(await rendered.getPage(i+1),pdf.getPage(i));infos.push(info);if(!first)first=info;count++}
+ docs.push({name:file.name,bytes,infos});
+ }catch(e){failures.push(file.name+': '+e.message)}}
+ $('export').disabled=!docs.length;
+ if(docs.length){drawPreview();status('Ready: '+count+' PDF page(s) from '+docs.length+' file(s).'+(failures.length?' Skipped: '+failures.join('; '):''))}
+ else status('No readable PDFs. '+failures.join('; '));
+ }finally{busy=false}
+};
+$('export').onclick=async()=>{
+ if(!docs.length||busy)return;busy=true;$('export').disabled=true;
+ try{const out=await PDFLib.PDFDocument.create();let count=0;
+ for(const doc of docs){const source=await PDFLib.PDFDocument.load(doc.bytes);
+ for(let i=0;i<doc.infos.length;i++){
+ const info=doc.infos[i],box=cropBox(info),g=geometry(box.w,box.h),page=source.getPage(i);
+ // Bounding box is relative to PDF bottom-left; keep vector/text quality.
+ const embedded=(await out.embedPages([page],[{left:box.x,bottom:info.h-box.y-box.h,right:box.x+box.w,top:info.h-box.y}]))[0];
+ const dest=out.addPage([g.pw*MM,g.ph*MM]);
+ dest.drawPage(embedded,{x:g.x*MM,y:(g.ph-g.y-g.h)*MM,width:g.w*MM,height:g.h*MM});
+ count++;
+ }}
+ const bytes=await out.save(),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');
+ a.href=url;a.download='meesho-cropped-labels.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ status('Downloaded '+count+' cropped, print-ready label page(s). Print at actual size / 100%.');
+ }catch(e){console.error(e);status('Export failed: '+e.message)}finally{busy=false;$('export').disabled=false}
+};
 </script></body></html>
