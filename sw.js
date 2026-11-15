@@ -1,6 +1,6 @@
 /* Offline shell and pinned PDF runtime cache. No uploaded shipping PDFs are cached. */
-const VERSION='shipping-studio-v3';
-const SHELL=['./','./index.html','./meesho.html','./editor.html','./batch.html','./legacy.html','./premium.css','./workbench.html','./workbench.js','./manifest.webmanifest','./icon.svg'];
+const VERSION='shipping-studio-v4';
+const SHELL=['./','./index.html','./meesho.html','./editor.html','./batch.html','./legacy.html','./premium.css','./workbench.html','./workbench.js','./meesho-optimizer.html','./meesho-optimizer.js','./manifest.webmanifest','./icon.svg'];
 const RUNTIME=['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js','https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(VERSION);await cache.addAll(SHELL);await Promise.allSettled(RUNTIME.map(async url=>{const response=await fetch(url,{mode:'no-cors'});if(response.ok||response.type==='opaque')await cache.put(url,response)}));await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('shipping-studio-')&&key!==VERSION)await caches.delete(key);await self.clients.claim()})()));
