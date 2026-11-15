@@ -21,14 +21,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/site-source
-          cp index.html editor.html legacy.html meesho.html batch.html premium.css sw.js manifest.webmanifest icon.svg workbench.html workbench.js /tmp/site-source/
+          cp index.html editor.html legacy.html meesho.html batch.html premium.css sw.js manifest.webmanifest icon.svg workbench.html workbench.js meesho-optimizer.html meesho-optimizer.js /tmp/site-source/
           git fetch origin gh-pages
           git worktree add /tmp/site-publish origin/gh-pages
           cp /tmp/site-source/* /tmp/site-publish/
           cd /tmp/site-publish
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html editor.html legacy.html meesho.html batch.html premium.css sw.js manifest.webmanifest icon.svg workbench.html workbench.js
+          git add index.html editor.html legacy.html meesho.html batch.html premium.css sw.js manifest.webmanifest icon.svg workbench.html workbench.js meesho-optimizer.html meesho-optimizer.js
           if ! git diff --cached --quiet; then
             git commit -m "Deploy website from main"
             git push origin HEAD:gh-pages
