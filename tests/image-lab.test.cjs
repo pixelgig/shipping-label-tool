@@ -17,7 +17,7 @@ assert(evaluate("escapeCsv('=IMPORTXML(1)')").startsWith('"\''));
 ctx.oldPhoto={name:'old.jpg'};ctx.newPhoto={name:'new.jpg'};
 
 assert.equal(evaluate('currentPhoto(null,0)'),false,'missing selected file is not current');
-ctx.state.photoRevision=4;ctx.photoFile={name:'a.jpg'};node('photo').files=[ctx.photoFile];
+evaluate('state.photoRevision=4');ctx.photoFile={name:'a.jpg'};node('photo').files=[ctx.photoFile];
 assert.equal(evaluate('currentPhoto(photoFile,4)'),true,'current selected photo and revision accepted');
 assert.equal(evaluate('currentPhoto(photoFile,3)'),false,'stale revision rejected');
 ctx.otherFile={name:'b.jpg'};assert.equal(evaluate('currentPhoto(otherFile,4)'),false,'stale file rejected');
