@@ -11,6 +11,9 @@ jobs:
       - name: Validate scripts and tool definitions
         run: |
           node --check workbench.js
+          node --check meesho-optimizer.js
+          test -f meesho-optimizer.html
+          grep -q 'meesho-optimizer.js' meesho-optimizer.html
           node --check sw.js
           node - <<'NODE'
           const fs=require('fs');
