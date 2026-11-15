@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/site-source
-          cp index.html editor.html legacy.html meesho.html batch.html premium.css /tmp/site-source/
+          cp index.html editor.html legacy.html meesho.html batch.html premium.css sw.js manifest.webmanifest icon.svg /tmp/site-source/
           git fetch origin gh-pages
           git worktree add /tmp/site-publish origin/gh-pages
           cp /tmp/site-source/* /tmp/site-publish/
