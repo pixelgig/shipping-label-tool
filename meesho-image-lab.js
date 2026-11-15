@@ -11,7 +11,7 @@ function download(blob,filename){const u=URL.createObjectURL(blob),a=document.cr
 function cleanup(){for(const item of state.items)URL.revokeObjectURL(item.url);state.items=[];$('gallery').replaceChildren();$('rankings').replaceChildren();$('empty').classList.remove('hidden');$('downloadCSV').disabled=true;$('downloadZip').disabled=true;updateStats()}
 function readImage(file){return new Promise((resolve,reject)=>{const u=urlFor(file),image=new Image();image.onload=()=>{URL.revokeObjectURL(u);resolve(image)};image.onerror=()=>{URL.revokeObjectURL(u);reject(Error('Image could not be decoded. Try JPG or PNG.'))};image.src=u})}
 function paint(image,canvas,box,cfg){const context=canvas.getContext('2d',{alpha:false});const size=cfg.size;const heightSize=cfg.height||size;canvas.width=size;canvas.height=heightSize;context.fillStyle=cfg.background;context.fillRect(0,0,size,heightSize);
- const heightSize=cfg.height||size;const roomW=size*(1-2*cfg.padding),roomH=heightSize*(1-2*cfg.padding),scale=Math.min(roomW/box.w,roomH/box.h);
+ const roomW=size*(1-2*cfg.padding),roomH=heightSize*(1-2*cfg.padding),scale=Math.min(roomW/box.w,roomH/box.h);
  const width=box.w*scale,height=box.h*scale;
  const dx=(size-width)/2 + cfg.shiftX*(size*0.01),dy=(heightSize-height)/2+cfg.shiftY*(heightSize*0.01);
  context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';
