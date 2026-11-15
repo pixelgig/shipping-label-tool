@@ -50,7 +50,9 @@ function updateStats(){
 function numericQuote(v){if(String(v??'').trim()==='')return null;const n=Number(v);return Number.isFinite(n)&&n>=0?n:null}
 function baselineQuote(observations,entered){const current=numericQuote(entered);return current!==null?current:numericQuote(observations.quotes?.original??observations.originalCharge)}
 function quoteKey(){return'meesho-image-lab-observations-'+state.sourceKey}
-function saveQuotes(){if(!state.sourceKey)return;const quotes=Object.fromEntries(state.items.filter(v=>v.quote!==null).map(v=>[v.key,v.quote]));try{localStorage.setItem(quoteKey(),JSON.stringify({originalCharge:$('originalCharge').value,category:$('category').value,sellingPrice:$('sellingPrice').value,quotes}))}catch(e){message('Quotes could not be stored locally: '+e.message)}}
+function variantSignature(cfg,box){return JSON.stringify([cfg.size,cfg.height,cfg.background,cfg.padding,cfg.shiftX,cfg.shiftY,cfg.quality,box.x,box.y,box.w,box.h])}
+function restoredVariantQuote(observations,key,signature){return observations.signatures?.[key]===signature?numericQuote(observations.quotes?.[key]):null}
+function saveQuotes(){if(!state.sourceKey)return;const quotes=Object.fromEntries(state.items.filter(v=>v.quote!==null).map(v=>[v.key,v.quote]));const signatures=Object.fromEntries(state.items.filter(v=>v.index>0&&v.signature).map(v=>[v.key,v.signature]));try{localStorage.setItem(quoteKey(),JSON.stringify({signatures,originalCharge:$('originalCharge').value,category:$('category').value,sellingPrice:$('sellingPrice').value,quotes}))}catch(e){message('Quotes could not be stored locally: '+e.message)}}
 function loadQuotes(){try{return JSON.parse(localStorage.getItem(quoteKey())||'{}')}catch(e){return{}}}
 function addCard(item){const card=document.createElement('article');card.className='variant';card.dataset.index=String(item.index);
  const img=document.createElement('img');img.className='photo';img.src=item.url;img.alt=item.name+' preview';img.loading='lazy';card.append(img);
@@ -78,7 +80,7 @@ async function generate(){if(state.busy)return;const file=$('photo').files[0];if
   const canvas=document.createElement('canvas');
   for(let i=0;i<settings.length;i++){
    const cfg=settings[i];const geometry=paint(image,canvas,box,cfg);const blob=await toJpeg(canvas,cfg.quality);
-   const item={index:i+1,name:'Variant '+String(i+1).padStart(2,'0'),blob,url:urlFor(blob),key:'v'+String(i+1).padStart(2,'0'),quote:numericQuote(observations.quotes?.['v'+String(i+1).padStart(2,'0')]),detail:cfg.size+'×'+cfg.height+' px · '+Math.round(cfg.padding*100)+'% frame · '+geometry.scaledWidth+'×'+geometry.scaledHeight+' image'};
+   const item={index:i+1,name:'Variant '+String(i+1).padStart(2,'0'),blob,url:urlFor(blob),key:'v'+String(i+1).padStart(2,'0'),quote:restoredVariantQuote(observations,'v'+String(i+1).padStart(2,'0'),variantSignature(cfg,box)),signature:variantSignature(cfg,box),detail:cfg.size+'×'+cfg.height+' px · '+Math.round(cfg.padding*100)+'% frame · '+geometry.scaledWidth+'×'+geometry.scaledHeight+' image'};
    state.items.push(item);addCard(item);$('progressBar').style.width=Math.round((i+1)/count*100)+'%';message('Generated '+(i+1)+' / '+count+' variants…');
    if(i%3===0)await tick();
   }
