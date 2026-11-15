@@ -1,0 +1,40 @@
+/* Shipping Label Studio — shared premium visual system */
+:root{--ink:#162238;--sub:#67758b;--blue:#5268e9;--blue2:#6e7ff2;--line:#e5eaf3;--surface:#fff;--bg:#f5f7fc;--shadow:0 12px 40px rgba(30,45,85,.055);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;color:var(--ink)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}body.studio{margin:0;background:var(--bg);color:var(--ink);min-height:100vh}
+body.studio header{background:rgba(255,255,255,.97)!important;color:var(--ink)!important;border-bottom:1px solid var(--line)!important;box-shadow:none!important;padding:16px clamp(18px,4vw,58px)!important;min-height:74px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+body.studio header h1{font-size:18px!important;letter-spacing:-.6px!important;font-weight:800!important;color:var(--ink)!important}
+body.studio header h1 span{color:var(--blue)!important}
+body.studio header nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+body.studio header a{color:#57657d!important;text-decoration:none!important;font-size:12px!important;font-weight:650!important;padding:9px 12px;border-radius:10px;transition:background .15s,color .15s}
+body.studio header a:hover{background:#f0f3ff;color:#4058d9!important}
+body.studio main{max-width:1480px!important;margin:0 auto!important;padding:30px clamp(16px,3vw,42px) 54px!important;gap:24px!important}
+body.studio .card,body.studio .panel{background:#fff!important;border:1px solid var(--line)!important;border-radius:20px!important;box-shadow:var(--shadow)!important;padding:24px!important}
+body.studio h2{font-size:17px!important;letter-spacing:-.4px!important;color:var(--ink)!important;font-weight:750!important}
+body.studio .muted,body.studio .bottomhint{color:var(--sub)!important}
+body.studio label{color:#34425c}
+body.studio input[type=number],body.studio input[type=file],body.studio select,body.studio textarea{border:1px solid #dce3ef!important;background:#fff!important;border-radius:11px!important;min-height:43px;color:var(--ink)!important;transition:border-color .15s,box-shadow .15s}
+body.studio input:focus-visible,body.studio select:focus-visible,body.studio button:focus-visible,body.studio a:focus-visible{outline:3px solid #b7c2ff!important;outline-offset:2px}
+body.studio button{border-radius:11px!important;transition:transform .15s,background .15s,box-shadow .15s}
+body.studio button:active:not(:disabled){transform:translateY(1px)}
+body.studio button.primary,body.studio button#export,body.studio button#download{background:linear-gradient(135deg,#5368e9,#4258d7)!important;border-color:#5368e9!important;color:#fff!important;box-shadow:0 6px 18px #5268e92b}
+body.studio button.primary:hover,body.studio button#export:hover,body.studio button#download:hover{background:linear-gradient(135deg,#4057d5,#3249c1)!important}
+body.studio .upload{border:1.5px dashed #b5c3f4!important;background:linear-gradient(145deg,#f8faff,#f2f5ff)!important;border-radius:15px!important;padding:25px 15px!important}
+body.studio .upload:hover{border-color:#6b7feb!important;background:#f0f3ff!important}
+body.studio .upload strong{color:#4056cc!important}
+body.studio .note{background:#f5f7ff!important;border:1px solid #e6eafe!important;border-radius:13px!important;color:#55627d!important}
+body.studio .eyebrow{color:#586ee8!important}
+body.studio .sheetwrap,body.studio .bagstage,body.studio .preview{background:radial-gradient(circle at 50% 40%,#f9faff,#edf1f9)!important;border:1px solid #e8edf5!important;border-radius:16px!important}
+body.studio .sheet{box-shadow:0 14px 38px #24365725!important}
+body.studio .pill{background:#f0f2ff!important;color:#5264c8!important}
+body.studio .queueitem{border-radius:12px!important}
+body.studio .queueitem:hover{border-color:#bdc9f7!important}
+body.studio .chip{background:#eef7f3!important;color:#24856c!important}
+body.studio .workspacehead,body.studio .workspace-title{margin-bottom:20px!important}
+body.studio .pagebar button{padding:10px 16px}
+body.studio .dropzone{border-radius:15px!important}
+body.studio .bagshape{box-shadow:0 16px 36px #24365724!important}
+body.studio .baglabel{border-color:#5268e9!important}
+body.studio .resizehandle{background:#5268e9!important}
+@media(max-width:900px){body.studio main{grid-template-columns:1fr!important;padding:18px 14px 35px!important}body.studio .card,body.studio .panel{padding:19px!important}}
+@media(max-width:540px){body.studio header{padding:14px 16px!important}body.studio header nav{gap:2px}body.studio header a{font-size:11px!important;padding:7px 8px}body.studio .card,body.studio .panel{border-radius:15px!important}}
