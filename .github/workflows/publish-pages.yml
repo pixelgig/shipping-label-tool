@@ -1,0 +1,35 @@
+name: Publish website to GitHub Pages branch
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Synchronize site files to gh-pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/site-source
+          cp index.html editor.html legacy.html /tmp/site-source/
+          git fetch origin gh-pages
+          git worktree add /tmp/site-publish origin/gh-pages
+          cp /tmp/site-source/* /tmp/site-publish/
+          cd /tmp/site-publish
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html editor.html legacy.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Deploy website from main"
+            git push origin HEAD:gh-pages
+          fi
