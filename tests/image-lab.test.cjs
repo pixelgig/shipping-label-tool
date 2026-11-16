@@ -14,6 +14,13 @@ node('square').checked=false;
 const portrait=evaluate('paint(testImage,testCanvas,testBox,configs(12)[0])');assert.equal(canvas.width,1000);assert.equal(canvas.height,1250);assert(portrait.scaledHeight>square.scaledHeight);
 assert.equal(evaluate("numericQuote('')"),null);assert.equal(evaluate("numericQuote('49.50')"),49.5);assert.equal(evaluate("numericQuote('x')"),null);
 assert(evaluate("escapeCsv('=IMPORTXML(1)')").startsWith('"\''));
+assert.equal(evaluate('currentGeneration(0)'),true,'initial generation token accepted');
+evaluate('state.busy=true; state.generationRevision=7');node('generate').disabled=true;
+evaluate('invalidateGeneration()');
+assert.equal(evaluate('state.busy'),false,'photo change releases busy state immediately');
+assert.equal(node('generate').disabled,false,'new photo can be generated without waiting for stale encode');
+assert.equal(evaluate('currentGeneration(7)'),false,'old generation completion cannot change new generation controls');
+assert.equal(evaluate('currentGeneration(8)'),true,'new generation token remains current');
 ctx.oldPhoto={name:'old.jpg'};ctx.newPhoto={name:'new.jpg'};
 
 assert.equal(evaluate('currentPhoto(null,0)'),false,'missing selected file is not current');
